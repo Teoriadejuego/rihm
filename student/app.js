@@ -8,6 +8,7 @@
     antisocial: "Antisocial",
     inconsistent: "Inconsistent"
   };
+  const socialBehaviours = ["altruist", "egalitarian", "selfish", "antisocial"];
   const state = { data: null, selectedBehaviours: new Set(Object.keys(behaviourLabels)) };
   const byId = (id) => document.getElementById(id);
 
@@ -31,15 +32,17 @@
   function setupControls() {
     const country = byId("countrySelect");
     country.innerHTML = "";
-    availableCountries().forEach((name) => {
+    const countries = availableCountries();
+    countries.forEach((name) => {
       const option = document.createElement("option");
       option.value = name;
       option.textContent = name;
       country.appendChild(option);
     });
-    if (availableCountries().includes("Spain")) country.value = "Spain";
+    if (countries.includes("Spain")) country.value = "Spain";
 
     const controls = byId("behaviourControls");
+    controls.innerHTML = "";
     Object.entries(behaviourLabels).forEach(([value, label]) => {
       const wrapper = document.createElement("label");
       const input = document.createElement("input");
@@ -92,6 +95,7 @@
         <span class="md-bar-label">${behaviourLabels[behaviour]}</span>
         <span class="md-bar-track"><span class="md-bar-fill" style="display:block;width:${width}%"></span></span>
         <span class="md-bar-value">${suppressed ? "Hidden" : `${Number(cell.percentage).toFixed(1)}%`}</span>`;
+      row.setAttribute("aria-label", `${behaviourLabels[behaviour]}: ${suppressed ? "hidden for privacy" : `${Number(cell.percentage).toFixed(1)} percent`}`);
       container.appendChild(row);
     });
   }
@@ -134,6 +138,40 @@
       });
   }
 
+  function renderInsight(country, gender) {
+    const comparisons = socialBehaviours
+      .filter((behaviour) => state.selectedBehaviours.has(behaviour))
+      .map((behaviour) => ({
+        behaviour,
+        classCell: findCell("class", "Class", gender, behaviour),
+        referenceCell: findCell("international", country, gender, behaviour)
+      }))
+      .filter(({ classCell, referenceCell }) =>
+        classCell && referenceCell && !classCell.suppressed && !referenceCell.suppressed &&
+        classCell.percentage !== null && referenceCell.percentage !== null
+      )
+      .map((item) => ({
+        ...item,
+        gap: Number(item.classCell.percentage) - Number(item.referenceCell.percentage)
+      }))
+      .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+
+    const paragraph = byId("guidedInsight").querySelector("p");
+    if (!comparisons.length) {
+      paragraph.textContent = "No comparable social indicator is visible with these filters. Try another reference, gender or indicator.";
+      return;
+    }
+
+    const largest = comparisons[0];
+    const genderLabel = gender === "all" ? "all respondents" : gender;
+    if (Math.abs(largest.gap) < 0.05) {
+      paragraph.textContent = `The visible social indicators have the same percentages in the class and ${country} (${genderLabel}). Try another filter, then ask whether sample size or suppression changes what you can conclude.`;
+      return;
+    }
+    const direction = largest.gap >= 0 ? "higher" : "lower";
+    paragraph.textContent = `Largest visible difference: ${behaviourLabels[largest.behaviour]} is ${Math.abs(largest.gap).toFixed(1)} percentage points ${direction} in the class than in ${country} (${genderLabel}). This shows where the samples differ—not why.`;
+  }
+
   function renderMatrix(country, gender) {
     const scope = byId("matrixScope").value;
     const matrixCountry = scope === "class" ? "Class" : country;
@@ -160,6 +198,7 @@
           node.textContent = `${Number(cell.percentage).toFixed(1)}%`;
           node.title = `Compassion ${compassion}, envy ${envy}: ${cell.count} of ${cell.denominator_n}`;
         }
+        node.setAttribute("aria-label", node.title);
         grid.appendChild(node);
       }
     }
@@ -171,6 +210,7 @@
     const gender = byId("genderSelect").value;
     byId("referenceTitle").textContent = country;
     renderMetrics(country, gender);
+    renderInsight(country, gender);
     renderBars("classBars", "class", "Class", gender);
     renderBars("referenceBars", "international", country, gender);
     renderTable(country, gender);
@@ -183,9 +223,12 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       state.data = await response.json();
       const metadata = state.data.metadata || {};
+      const updated = metadata.generated_at_utc
+        ? new Date(metadata.generated_at_utc).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })
+        : "Not yet published";
       byId("publicationMeta").innerHTML = `
-        <strong>Snapshot</strong><br>${metadata.publication_id || "Unknown"}<br>
-        <strong>Updated</strong><br>${metadata.generated_at_utc || "Not yet published"}`;
+        <strong>Published snapshot</strong><br>${updated} UTC<br>
+        <span>${metadata.publication_id || "Unknown"}</span>`;
       if (!Array.isArray(state.data.cells) || !state.data.cells.length) {
         setStatus("No classroom snapshot has been published yet.", true);
         document.querySelectorAll(".sample-grid, .comparison-grid, .table-card, .matrix-card").forEach((node) => {

@@ -1,5 +1,5 @@
 ---
-title: "Mini-dictator Classroom Results"
+title: "RIHM · Mini-dictator Decision Lab"
 format:
   dashboard:
     theme: cosmo
@@ -8,101 +8,222 @@ format:
     scrolling: true
 resources:
   - app.js
+  - assets/decision-lab.png
   - data/public_results.json
   - data/public_manifest.json
 ---
 
 ```{=html}
 <div id="dashboardApp" class="dashboard-shell" aria-live="polite">
-  <section class="hero-panel">
-    <div>
-      <p class="eyebrow">CLASSROOM EXPLORATION</p>
-      <h1>Mini-dictator behaviour dashboard</h1>
-      <p class="hero-copy">Compare the class snapshot with the international reference sample. All interactions happen in your browser.</p>
-    </div>
-    <div id="publicationMeta" class="publication-meta">Loading the published snapshot…</div>
-  </section>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="RIHM Decision Lab home">
+      <span class="brand-mark" aria-hidden="true">R</span>
+      <span><strong>RIHM</strong><small>Decision Lab</small></span>
+    </a>
+    <nav class="section-nav" aria-label="Learning path">
+      <a href="#learn"><span>01</span> Understand</a>
+      <a href="#explore"><span>02</span> Explore</a>
+      <a href="#reflect"><span>03</span> Reflect</a>
+    </nav>
+    <div id="publicationMeta" class="publication-meta">Loading snapshot…</div>
+  </header>
 
-  <div id="dataStatus" class="status-banner" role="status">Loading data…</div>
+  <main id="top">
+    <section id="learn" class="intro-grid">
+      <div class="intro-copy">
+        <p class="eyebrow">A SELF-GUIDED CLASSROOM EXPERIENCE</p>
+        <h1>What do our choices reveal about inequality?</h1>
+        <p class="lead">Make sense of the mini-dictator game, explore your class results and turn the patterns into better questions—not quick judgements.</p>
+        <div class="intro-actions">
+          <a class="button primary" href="#gamePrimer">Learn the game</a>
+          <a class="button secondary" href="#explore">Open the results</a>
+        </div>
+        <p class="time-note"><span aria-hidden="true">◷</span> About 6 minutes to explore</p>
+      </div>
+      <figure class="decision-figure">
+        <img src="assets/decision-lab.png" alt="Two people considering an equal and an unequal allocation of coins">
+        <figcaption>One decision-maker. Two possible allocations. No single “correct” answer.</figcaption>
+      </figure>
+    </section>
 
-  <section class="method-note">
-    <strong>How to read these results:</strong>
-    Altruist, Egalitarian, Selfish and Antisocial are overlapping indicators, not mutually exclusive categories.
-    One participant may appear in two indicators, so their percentages may add to more than 100%.
-    Small cells are hidden to protect privacy.
-  </section>
-
-  <section class="control-panel" aria-label="Dashboard filters">
-    <label>Reference country
-      <select id="countrySelect"></select>
-    </label>
-    <label>Gender
-      <select id="genderSelect">
-        <option value="all">All respondents</option>
-        <option value="female">Female</option>
-        <option value="male">Male</option>
-      </select>
-    </label>
-    <fieldset>
-      <legend>Behaviours</legend>
-      <div id="behaviourControls" class="check-grid"></div>
-    </fieldset>
-  </section>
-
-  <section class="sample-grid" aria-label="Sample sizes">
-    <article class="metric-card"><span>Class complete responses</span><strong id="classComplete">—</strong></article>
-    <article class="metric-card"><span>Class consistent responses</span><strong id="classConsistent">—</strong></article>
-    <article class="metric-card"><span>Reference complete responses</span><strong id="referenceComplete">—</strong></article>
-    <article class="metric-card"><span>Reference consistent responses</span><strong id="referenceConsistent">—</strong></article>
-  </section>
-
-  <section class="comparison-grid">
-    <article class="chart-card">
-      <div class="card-heading"><div><p class="eyebrow">CLASS</p><h2>Our group</h2></div><span class="denominator-help">Behaviour denominator: consistent responses</span></div>
-      <div id="classBars" class="bar-chart"></div>
-    </article>
-    <article class="chart-card">
-      <div class="card-heading"><div><p class="eyebrow">REFERENCE</p><h2 id="referenceTitle">International sample</h2></div><span class="denominator-help">Behaviour denominator: consistent responses</span></div>
-      <div id="referenceBars" class="bar-chart"></div>
-    </article>
-  </section>
-
-  <section class="table-card">
-    <div class="card-heading"><div><p class="eyebrow">DETAIL</p><h2>Comparison table</h2></div></div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Behaviour</th><th>Class count</th><th>Class %</th><th>Reference count</th><th>Reference %</th><th>Denominator</th></tr></thead>
-        <tbody id="comparisonTable"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="matrix-card">
-    <div class="card-heading matrix-heading">
-      <div><p class="eyebrow">CONSISTENT RESPONSES</p><h2>Compassion × envy map</h2></div>
-      <label>Sample
-        <select id="matrixScope"><option value="class">Class</option><option value="international">Reference</option></select>
-      </label>
-    </div>
-    <p class="matrix-explainer">Rows show compassion level (low to high); columns show envy level (low to high). Values are shares of consistent responses.</p>
-    <div class="matrix-layout">
-      <span class="matrix-y-label">Higher compassion ↑</span>
-      <div id="matrixGrid" class="matrix-grid"></div>
-      <span class="matrix-x-label">Higher envy →</span>
-    </div>
-  </section>
-
-  <section class="discussion-card">
-    <p class="eyebrow">DISCUSS</p>
-    <h2>Questions for the classroom</h2>
-    <ol>
-      <li>Which differences between the class and the reference sample are largest?</li>
-      <li>How does the selected gender filter change the comparison?</li>
-      <li>Why can the four behaviour percentages add to more than 100%?</li>
-      <li>Which conclusions are not justified when a value is suppressed or a sample is small?</li>
+    <ol class="journey-strip" aria-label="Three-step learning journey">
+      <li><span>01</span><div><strong>Understand</strong><small>See how six choices reveal social motives.</small></div></li>
+      <li><span>02</span><div><strong>Explore</strong><small>Compare the class with a reference sample.</small></div></li>
+      <li><span>03</span><div><strong>Reflect</strong><small>Discuss patterns without labelling people.</small></div></li>
     </ol>
-  </section>
+
+    <section id="gamePrimer" class="primer-card">
+      <div class="section-intro">
+        <p class="eyebrow">UNDERSTAND · THE GAME</p>
+        <h2>Six small choices, several possible motives</h2>
+        <p>You are the decision-maker. In each round, you choose between an equal allocation and an unequal one. The recipient sees the outcome but cannot change it. Together, the six choices reveal how you respond to efficiency, equality and relative advantage.</p>
+      </div>
+
+      <div class="game-steps" aria-label="How the game works">
+        <article><span class="step-icon">1</span><div><h3>Read both allocations</h3><p>Each option specifies a payoff for you and for another anonymous participant.</p></div></article>
+        <article><span class="step-icon">2</span><div><h3>Choose independently</h3><p>There is no negotiation and no answer you are expected to select.</p></div></article>
+        <article><span class="step-icon">3</span><div><h3>Look for a pattern</h3><p>The dashboard studies all six decisions together—not one choice in isolation.</p></div></article>
+      </div>
+
+      <div class="allocation-demo" aria-label="Example of equal and unequal allocations">
+        <article class="allocation-card equal">
+          <p class="eyebrow">OPTION A · EQUAL</p>
+          <div class="payoff-row"><span><small>You</small><strong>10</strong></span><span><small>Other</small><strong>10</strong></span></div>
+        </article>
+        <div class="choice-word" aria-hidden="true">or</div>
+        <article class="allocation-card unequal">
+          <p class="eyebrow">OPTION B · UNEQUAL</p>
+          <div class="payoff-row"><span><small>You</small><strong>12</strong></span><span><small>Other</small><strong>4</strong></span></div>
+        </article>
+        <p class="demo-note">The unequal amounts change from round to round. That variation is what makes motives distinguishable.</p>
+      </div>
+
+      <div class="behaviour-grid" aria-label="Behaviour indicators">
+        <article class="behaviour-card altruist"><span aria-hidden="true">↗</span><h3>Altruist</h3><p>Choices that favour the other person and the combined payoff.</p></article>
+        <article class="behaviour-card egalitarian"><span aria-hidden="true">=</span><h3>Egalitarian</h3><p>Choices that favour equal payoffs and reduce inequality.</p></article>
+        <article class="behaviour-card selfish"><span aria-hidden="true">●</span><h3>Selfish</h3><p>Choices that favour the decision-maker’s own payoff.</p></article>
+        <article class="behaviour-card antisocial"><span aria-hidden="true">↘</span><h3>Antisocial</h3><p>Choices that reduce the other person’s payoff or increase inequality.</p></article>
+      </div>
+
+      <aside class="interpretation-note">
+        <div class="note-mark" aria-hidden="true">!</div>
+        <div><strong>These are indicators, not personality types.</strong><p>They are non-exclusive: the same consistent response pattern can match two indicators. Percentages can therefore add to more than 100%.</p></div>
+      </aside>
+
+      <details class="method-details">
+        <summary>See the six allocation choices used in the activity</summary>
+        <div class="table-scroll">
+          <table class="decision-table">
+            <thead><tr><th>Decision</th><th>Equal option</th><th>Unequal option</th></tr></thead>
+            <tbody>
+              <tr><td>D1</td><td>You 10 · Other 10</td><td>You 8 · Other 16</td></tr>
+              <tr><td>D2</td><td>You 10 · Other 10</td><td>You 12 · Other 4</td></tr>
+              <tr><td>D3</td><td>You 10 · Other 10</td><td>You 10 · Other 18</td></tr>
+              <tr><td>D4</td><td>You 10 · Other 10</td><td>You 10 · Other 6</td></tr>
+              <tr><td>D5</td><td>You 10 · Other 10</td><td>You 16 · Other 4</td></tr>
+              <tr><td>D6</td><td>You 10 · Other 10</td><td>You 11 · Other 19</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section id="explore" class="results-section">
+      <div class="section-heading-row">
+        <div class="section-intro compact">
+          <p class="eyebrow">EXPLORE · YOUR RESULTS</p>
+          <h2>Change one filter. Notice what moves.</h2>
+          <p>Start with the whole class, then change one filter at a time. Compare direction and size—not just which bar is longest.</p>
+        </div>
+        <span class="privacy-pill">Aggregated data · cells under 5 protected</span>
+      </div>
+
+      <div id="dataStatus" class="status-banner" role="status">Loading data…</div>
+
+      <section class="control-panel" aria-label="Dashboard filters">
+        <div class="control-intro"><span>1</span><div><strong>Choose your lens</strong><small>The class is always compared with the selected reference.</small></div></div>
+        <label>Reference country
+          <select id="countrySelect"></select>
+        </label>
+        <label>Gender
+          <select id="genderSelect">
+            <option value="all">All respondents</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </label>
+        <fieldset>
+          <legend>Indicators shown</legend>
+          <div id="behaviourControls" class="check-grid"></div>
+        </fieldset>
+      </section>
+
+      <section class="sample-grid" aria-label="Sample sizes">
+        <article class="metric-card"><span>Class complete</span><strong id="classComplete">—</strong><small>all valid six-choice responses</small></article>
+        <article class="metric-card"><span>Class consistent</span><strong id="classConsistent">—</strong><small>used for four social indicators</small></article>
+        <article class="metric-card"><span>Reference complete</span><strong id="referenceComplete">—</strong><small>for the selected comparison</small></article>
+        <article class="metric-card"><span>Reference consistent</span><strong id="referenceConsistent">—</strong><small>used for four social indicators</small></article>
+      </section>
+
+      <aside id="guidedInsight" class="guided-insight" aria-live="polite">
+        <span class="insight-label">START HERE</span>
+        <p>Choose filters to generate a guided observation.</p>
+      </aside>
+
+      <section class="comparison-grid">
+        <article class="chart-card">
+          <div class="card-heading"><div><p class="eyebrow">CLASS</p><h2>Our group</h2></div><span class="denominator-help">Social indicators use consistent responses.</span></div>
+          <div id="classBars" class="bar-chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="card-heading"><div><p class="eyebrow">REFERENCE</p><h2 id="referenceTitle">International sample</h2></div><span class="denominator-help">Social indicators use consistent responses.</span></div>
+          <div id="referenceBars" class="bar-chart"></div>
+        </article>
+      </section>
+
+      <section class="table-card">
+        <div class="card-heading"><div><p class="eyebrow">CHECK THE NUMBERS</p><h2>Comparison table</h2></div><p>“Hidden” means the value was suppressed for privacy.</p></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Indicator</th><th>Class count</th><th>Class %</th><th>Reference count</th><th>Reference %</th><th>Denominator</th></tr></thead>
+            <tbody id="comparisonTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="matrix-card">
+        <div class="card-heading matrix-heading">
+          <div><p class="eyebrow">LOOK BENEATH THE LABELS</p><h2>Compassion × envy map</h2></div>
+          <label>Sample
+            <select id="matrixScope"><option value="class">Class</option><option value="international">Reference</option></select>
+          </label>
+        </div>
+        <p class="matrix-explainer">Each square is a response pattern among consistent participants. Move upward for stronger aversion to being ahead (compassion); move right for stronger aversion to being behind (envy).</p>
+        <div class="matrix-layout">
+          <span class="matrix-y-label">More compassion ↑</span>
+          <div id="matrixGrid" class="matrix-grid"></div>
+          <span class="matrix-x-label">More envy →</span>
+        </div>
+      </section>
+    </section>
+
+    <section id="reflect" class="reflection-section">
+      <div class="section-intro reflection-intro">
+        <p class="eyebrow">REFLECT · FROM DATA TO DIALOGUE</p>
+        <h2>Use the chart to open a conversation—not to close one.</h2>
+        <p>These samples describe participants in this activity. They do not represent an entire country, university or gender, and they should never be used to stereotype a group.</p>
+      </div>
+
+      <div class="question-grid">
+        <article><span>01</span><h3>Observe</h3><p>What is the largest visible class–reference difference? Is it large enough to deserve attention?</p></article>
+        <article><span>02</span><h3>Explain</h3><p>What motives could produce the same choice? Which explanations cannot be separated by these data?</p></article>
+        <article><span>03</span><h3>Connect</h3><p>Where do similar trade-offs between equality and efficiency appear in organizations or everyday life?</p></article>
+        <article><span>04</span><h3>Challenge</h3><p>How might context, incentives or sample composition change the comparison you see?</p></article>
+      </div>
+
+      <aside class="dialogue-code">
+        <strong>A useful discussion agreement</strong>
+        <p>Describe patterns before interpreting them. Critique explanations, not people. Treat every comparison as a prompt for inquiry, not a ranking of groups.</p>
+      </aside>
+    </section>
+
+    <section class="research-card">
+      <div>
+        <p class="eyebrow">RESEARCH FOUNDATION</p>
+        <h2>Where does this game come from?</h2>
+        <p>The six-choice approach follows the mini-dictator task used to study how cognitive reflection relates to altruistic, egalitarian, selfish and antisocial motives.</p>
+      </div>
+      <div class="citation-block">
+        <p><strong>Corgnet, B., Espín, A. M., &amp; Hernán-González, R. (2015).</strong> “The cognitive basis of social behavior: Cognitive reflection overrides antisocial but not always prosocial motives.” <em>Frontiers in Behavioral Neuroscience, 9</em>, 287.</p>
+        <a class="text-link" href="https://doi.org/10.3389/fnbeh.2015.00287" target="_blank" rel="noopener">Read the original open-access paper <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Reflections on Inequality and Humanistic Management</span>
+    <span>This public page contains aggregated data only.</span>
+  </footer>
 </div>
 <script src="app.js"></script>
 ```
-
