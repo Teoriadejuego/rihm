@@ -50,8 +50,16 @@ ui <- page_fillable(
       col_widths = c(4, 8),
       card(
         card_header("1. Download and validate"),
+        radioButtons("data_source", "Data source", choices = c(
+          "Qualtrics: real responses" = "qualtrics",
+          "Demonstration: synthetic responses" = "demo"
+        )),
         textInput("session_code", "Class session code", placeholder = "Enter the code used by students"),
         actionButton("download", "Download once from Qualtrics", class = "btn-primary w-100"),
+        conditionalPanel(
+          condition = "input.data_source === 'demo'",
+          p("DEMONSTRATION ONLY. Generated test data; no real participants or Qualtrics connection.", class = "alert alert-warning")
+        ),
         hr(),
         checkboxInput(
           "confirm",
@@ -91,6 +99,14 @@ server <- function(input, output, session) {
   }
   refresh_snapshot_input()
 
+  observeEvent(input$data_source, {
+    candidate(NULL)
+    updateCheckboxInput(session, "confirm", value = FALSE)
+    is_demo <- identical(input$data_source, "demo")
+    updateTextInput(session, "session_code", value = if (is_demo) demo_session_code() else "")
+    updateActionButton(session, "download", label = if (is_demo) "Load demonstration" else "Download once from Qualtrics")
+  })
+
   output$configuration_status <- renderUI({
     if (!is.null(config_result$error)) {
       div(class = "alert alert-danger", config_result$error)
@@ -100,7 +116,7 @@ server <- function(input, output, session) {
       div(
         class = "status-box",
         strong("Configuration loaded. "),
-        if (nzchar(pages)) paste("Pages URL:", pages) else "GitHub Pages URL still needs to be set in config/config.yml."
+        if (nzchar(pages)) tags$a("Open student dashboard", href = pages, target = "_blank", rel = "noopener") else "GitHub Pages URL still needs to be set in config/config.yml."
       )
     }
   })
@@ -113,12 +129,17 @@ server <- function(input, output, session) {
       return()
     }
     candidate(NULL)
-    status("Downloading both surveys and validating the selected class session …")
+    is_demo <- identical(input$data_source, "demo")
+    status(if (is_demo) "Preparing explicitly synthetic demonstration data …" else "Downloading both surveys and validating the selected class session …")
     result <- tryCatch(
-      withProgress(message = "Downloading from Qualtrics once", value = 0.1, {
-        downloaded <- download_surveys_once(config_result$value)
-        incProgress(0.45, detail = "Normalising and classifying responses")
-        value <- prepare_publication_candidate(downloaded, code, config_result$value)
+      withProgress(message = if (is_demo) "Loading synthetic demonstration" else "Downloading from Qualtrics once", value = 0.1, {
+        value <- if (is_demo) {
+          prepare_demo_candidate(config_result$value, code)
+        } else {
+          downloaded <- download_surveys_once(config_result$value)
+          incProgress(0.45, detail = "Normalising and classifying responses")
+          prepare_publication_candidate(downloaded, code, config_result$value)
+        }
         incProgress(0.45, detail = "Applying privacy suppression")
         value
       }),
@@ -131,7 +152,7 @@ server <- function(input, output, session) {
       candidate(result)
       updateCheckboxInput(session, "confirm", value = FALSE)
       status(paste("Candidate", result$results$metadata$publication_id, "is ready for review."))
-      showNotification("Download complete. Review the diagnostics and public preview.", type = "message")
+      showNotification("Candidate ready. Review the diagnostics and public preview.", type = "message")
     }
   })
 
@@ -141,6 +162,7 @@ server <- function(input, output, session) {
     cells <- value$results$cells
     div(
       class = "alert alert-info",
+      if (identical(value$results$metadata$data_mode, "demonstration")) tags$p(tags$strong("DEMONSTRATION — synthetic data, not real survey results.")),
       tags$b(value$results$metadata$publication_id), tags$br(),
       paste(sum(!cells$suppressed), "visible behaviour cells and", sum(cells$suppressed), "suppressed cells."),
       tags$br(),

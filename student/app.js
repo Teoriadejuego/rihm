@@ -223,11 +223,13 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       state.data = await response.json();
       const metadata = state.data.metadata || {};
+      const isDemo = metadata.data_mode === "demonstration";
+      byId("demoNotice").hidden = !isDemo;
       const updated = metadata.generated_at_utc
         ? new Date(metadata.generated_at_utc).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })
         : "Not yet published";
       byId("publicationMeta").innerHTML = `
-        <strong>Classroom results</strong><br>${updated}${metadata.generated_at_utc ? " UTC" : ""}
+        <strong>${isDemo ? "Synthetic demonstration" : "Classroom results"}</strong><br>${updated}${metadata.generated_at_utc ? " UTC" : ""}
         ${metadata.generated_at_utc ? `<br><span>${metadata.publication_id || "Unknown"}</span>` : ""}`;
       if (!Array.isArray(state.data.cells) || !state.data.cells.length) {
         setStatus("The dashboard is ready. Classroom results will appear here after the teacher publishes a snapshot.");
@@ -237,7 +239,9 @@
         return;
       }
       setupControls();
-      setStatus("Static snapshot loaded. Filters and charts now run entirely in this browser.");
+      setStatus(isDemo
+        ? "DEMONSTRATION: generated test data, not real survey results. Try the country, gender and indicator filters."
+        : "Static snapshot loaded. Filters and charts now run entirely in this browser.");
       render();
     } catch (error) {
       setStatus(`The published snapshot could not be loaded: ${error.message}`, true);

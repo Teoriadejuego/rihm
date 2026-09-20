@@ -31,8 +31,10 @@ The local `config/config.yml`, `.Renviron`, raw downloads, staging files and sna
 Start the local panel from the project root:
 
 ```powershell
-Rscript -e "shiny::runApp('admin', launch.browser = TRUE)"
+Rscript scripts/start_teacher.R
 ```
+
+The teacher panel is available at `http://127.0.0.1:8124/` on the teacher's computer.
 
 Then:
 
@@ -43,6 +45,24 @@ Then:
 5. If necessary, select a local snapshot and republish it. Rollback creates a new commit and does not rewrite Git history.
 
 The initial source-code commit is already present locally. After the first remote push, classroom-result publications are handled by the panel.
+
+## Try the demonstration without Qualtrics
+
+In the local teacher panel, select **Demonstration: synthetic responses**, use code
+`DEMO-RIHM`, and click **Load demonstration**. This runs generated responses through
+the same normalisation, classification and privacy checks as a real download.
+The preview includes both survey schemas, six reference countries, gender filters,
+and examples of invalid and duplicate responses in the private diagnostics.
+
+After reviewing the preview, the usual validation and publication buttons work.
+A published demonstration is explicitly labelled as synthetic on the student page;
+it replaces the current public snapshot. It requires no Qualtrics credentials.
+To return to real survey data, select **Qualtrics: real responses**, enter a real
+session code and download and publish that candidate.
+
+For a separate local student preview without changing the public snapshot, run
+`Rscript scripts/preview_demo.R`, then serve `staging/demo-preview/student/_site`
+with a local HTTP server. This preview never pushes to GitHub.
 
 ## Classification and denominators
 

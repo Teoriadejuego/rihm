@@ -168,6 +168,10 @@ th { color: #435761; background: #f1f5f2; }
 .text-link { color: var(--teal); font-weight: 800; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .site-footer { display: flex; gap: 25px; justify-content: space-between; margin-top: 20px; padding: 19px 4px 2px; border-top: 1px solid var(--line-dark); color: var(--muted); font-size: .8rem; }
 .empty-state { padding: 24px; color: var(--muted); text-align: center; }
+.demo-banner { margin-top: 22px; padding: 18px 24px; border: 2px solid #9b6418; border-radius: 12px; background: #fff5dc; color: #69440c; }
+.demo-banner[hidden] { display: none; }
+.demo-banner strong, .demo-banner span { display: block; }
+.demo-banner span { margin-top: 5px; }
 
 @media (max-width: 980px) {
   .site-header { grid-template-columns: auto 1fr; }

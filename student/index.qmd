@@ -29,6 +29,10 @@ resources:
   </header>
 
   <main id="top">
+    <aside id="demoNotice" class="demo-banner" role="note" hidden>
+      <strong>DEMONSTRATION · SYNTHETIC DATA</strong>
+      <span>All results on this page are generated examples for testing. They do not describe real students, countries or genders.</span>
+    </aside>
     <section id="learn" class="intro-grid">
       <div class="intro-copy">
         <p class="eyebrow">A SELF-GUIDED CLASSROOM EXPERIENCE</p>
@@ -225,5 +229,5 @@ resources:
     <span>This public page contains aggregated data only.</span>
   </footer>
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=demo-mode-1"></script>
 ```
