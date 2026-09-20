@@ -1,0 +1,14 @@
+qualtrics:
+  reference_survey_id: "SV_REFERENCE_SURVEY"
+  class_survey_id: "SV_CLASS_SURVEY"
+  session_code_column: "session_password"
+
+privacy:
+  minimum_cell_size: 5
+
+publication:
+  repo_root: "."
+  branch: "main"
+  pages_base_url: "https://YOUR-ACCOUNT.github.io/YOUR-REPOSITORY/"
+  verify_timeout_seconds: 180
+

@@ -1,0 +1,88 @@
+:root {
+  --navy: #0b3d91;
+  --blue: #1b6ec2;
+  --sky: #5fa8e0;
+  --pale: #eaf2fb;
+  --ink: #1f2937;
+  --muted: #68768a;
+  --line: #dce7f5;
+  --surface: #ffffff;
+  --danger-pale: #fff4e5;
+}
+
+body { overflow-x: hidden; background: #f4f8fd; color: var(--ink); }
+.dashboard-shell { box-sizing: border-box; width: 100%; max-width: 1220px; margin: 0 auto; padding: 0 14px 42px; overflow-x: clip; font-family: Inter, "Segoe UI", sans-serif; }
+.hero-panel { display: flex; justify-content: space-between; gap: 28px; align-items: end; padding: 28px 30px; color: white; background: linear-gradient(135deg, var(--navy), var(--blue)); border-radius: 18px; box-shadow: 0 8px 26px rgba(11,61,145,.18); }
+.hero-panel h1 { margin: 2px 0 8px; color: white; font-size: clamp(1.65rem, 3vw, 2.45rem); }
+.hero-copy { max-width: 700px; margin: 0; opacity: .9; }
+.eyebrow { margin: 0 0 4px; font-size: .73rem; font-weight: 800; letter-spacing: .11em; color: var(--blue); }
+.hero-panel .eyebrow { color: #cfe4ff; }
+.publication-meta { min-width: 225px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.3); border-radius: 12px; background: rgba(255,255,255,.12); font-size: .83rem; }
+.status-banner, .method-note { margin-top: 16px; padding: 13px 16px; border-radius: 11px; }
+.status-banner { background: var(--pale); color: var(--navy); font-weight: 700; }
+.status-banner.error { background: #feecec; color: #9d1c1c; }
+.method-note { border-left: 5px solid #efa93a; background: var(--danger-pale); }
+.control-panel, .chart-card, .table-card, .matrix-card, .discussion-card, .metric-card { background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 2px 10px rgba(11,61,145,.055); }
+.control-panel { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(170px, .7fr) minmax(360px, 2fr); gap: 18px; align-items: end; margin-top: 18px; padding: 18px 20px; }
+label, legend { color: #39485b; font-size: .84rem; font-weight: 750; }
+select { width: 100%; margin-top: 6px; padding: 9px 10px; border: 1px solid #cad8eb; border-radius: 8px; color: var(--ink); background: white; }
+fieldset { border: 0; padding: 0; margin: 0; }
+.check-grid { display: flex; flex-wrap: wrap; gap: 7px 13px; margin-top: 7px; }
+.check-grid label { display: flex; gap: 6px; align-items: center; font-weight: 600; }
+.sample-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px; }
+.metric-card { padding: 16px; }
+.metric-card span { display: block; min-height: 2.5em; color: var(--muted); font-size: .8rem; }
+.metric-card strong { display: block; margin-top: 5px; color: var(--navy); font-size: 1.8rem; }
+.comparison-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+.chart-card, .table-card, .matrix-card, .discussion-card { min-width: 0; padding: 20px; }
+.card-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 16px; }
+.card-heading h2, .discussion-card h2 { margin: 0; color: var(--navy); font-size: 1.25rem; }
+.denominator-help { max-width: 145px; color: var(--muted); font-size: .72rem; text-align: right; }
+.bar-chart { display: grid; min-width: 0; gap: 14px; min-height: 250px; }
+.md-bar-row { display: grid; min-width: 0; grid-template-columns: 90px minmax(0, 1fr) 52px; gap: 8px; align-items: center; }
+.md-bar-label { font-size: .83rem; font-weight: 700; }
+.md-bar-track { height: 22px; overflow: hidden; border-radius: 6px; background: #edf3fa; }
+.md-bar-fill { height: 100%; min-width: 2px; border-radius: 6px; background: linear-gradient(90deg, var(--navy), var(--sky)); transition: width .25s ease; }
+.md-bar-value { overflow: hidden; color: var(--navy); font-size: .82rem; font-weight: 800; text-align: right; white-space: nowrap; }
+.suppressed .md-bar-track { background: repeating-linear-gradient(135deg,#eef2f6,#eef2f6 6px,#dde5ed 6px,#dde5ed 12px); }
+.suppressed .md-bar-value { color: var(--muted); font-size: .75rem; }
+.table-card, .matrix-card, .discussion-card { margin-top: 16px; }
+.table-scroll { width: 100%; max-width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 12px; border-bottom: 1px solid #e8eef6; font-size: .84rem; text-align: right; }
+th:first-child, td:first-child { text-align: left; }
+th { color: #4b5b6f; background: #f7fafe; }
+.matrix-heading { align-items: end; }
+.matrix-heading label { width: 190px; }
+.matrix-explainer { color: var(--muted); font-size: .85rem; }
+.matrix-layout { display: grid; box-sizing: border-box; width: 100%; min-width: 0; grid-template-columns: 36px minmax(0, 1fr); grid-template-rows: auto 26px; justify-content: center; align-items: center; }
+.matrix-grid { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.matrix-cell { display: flex; min-width: 0; min-height: 72px; align-items: center; justify-content: center; border: 1px solid #cddcf0; border-radius: 8px; color: var(--navy); font-weight: 850; }
+.matrix-cell.suppressed { color: var(--muted); background: repeating-linear-gradient(135deg,#f4f6f8,#f4f6f8 6px,#e5eaf0 6px,#e5eaf0 12px) !important; }
+.matrix-y-label { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--muted); font-size: .75rem; text-align: center; }
+.matrix-x-label { grid-column: 2; color: var(--muted); font-size: .75rem; text-align: center; }
+.discussion-card ol { margin-bottom: 0; padding-left: 1.25rem; }
+.discussion-card li { margin: 8px 0; }
+.empty-state { padding: 24px; color: var(--muted); text-align: center; }
+
+@media (max-width: 850px) {
+  .hero-panel { display: block; }
+  .publication-meta { margin-top: 18px; }
+  .control-panel { grid-template-columns: 1fr 1fr; }
+  .control-panel fieldset { grid-column: 1 / -1; }
+  .sample-grid { grid-template-columns: 1fr 1fr; }
+  .comparison-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .dashboard-shell { padding: 0 5px 28px; }
+  .hero-panel { padding: 22px 18px; border-radius: 12px; }
+  .control-panel { grid-template-columns: 1fr; }
+  .control-panel fieldset { grid-column: auto; }
+  .sample-grid { grid-template-columns: 1fr 1fr; }
+  .chart-card { padding: 17px 14px; }
+  .md-bar-row { grid-template-columns: 78px minmax(0, 1fr) 46px; gap: 6px; }
+  .md-bar-label, .md-bar-value { font-size: .74rem; }
+  .matrix-layout { grid-template-columns: 28px minmax(0, 1fr); }
+  .matrix-cell { min-height: 58px; font-size: .8rem; }
+}

@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "publication_id": "not-published",
+    "generated_at_utc": null,
+    "source_snapshot_at_utc": null,
+    "minimum_cell_size": 5,
+    "classification_note": "Behaviour indicators reproduce the original overlapping rules. They are not mutually exclusive and percentages may sum to more than 100%."
+  },
+  "cells": [],
+  "matrix_cells": []
+}
+

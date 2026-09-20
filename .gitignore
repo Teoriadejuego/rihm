@@ -1,0 +1,10 @@
+.Renviron
+config/config.yml
+_site/
+.quarto/
+staging/
+snapshots/
+*.Rproj.user/
+.Rhistory
+.RData
+

@@ -1,0 +1,17 @@
+Package: minidictatorclassroom
+Type: Project
+Title: Static Mini-Dictator Classroom Dashboard
+Version: 1.0.0
+Authors@R: person("Classroom", "Team", role = c("aut", "cre"), email = "maintainer@example.invalid")
+Description: Downloads Qualtrics results locally, validates and aggregates them,
+    and publishes privacy-protected static classroom visualisations.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    bslib,
+    jsonlite,
+    qualtRics,
+    shiny,
+    testthat,
+    uuid,
+    yaml

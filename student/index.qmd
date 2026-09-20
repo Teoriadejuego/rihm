@@ -1,0 +1,108 @@
+---
+title: "Mini-dictator Classroom Results"
+format:
+  dashboard:
+    theme: cosmo
+    css: styles.css
+    orientation: rows
+    scrolling: true
+resources:
+  - app.js
+  - data/public_results.json
+  - data/public_manifest.json
+---
+
+```{=html}
+<div id="dashboardApp" class="dashboard-shell" aria-live="polite">
+  <section class="hero-panel">
+    <div>
+      <p class="eyebrow">CLASSROOM EXPLORATION</p>
+      <h1>Mini-dictator behaviour dashboard</h1>
+      <p class="hero-copy">Compare the class snapshot with the international reference sample. All interactions happen in your browser.</p>
+    </div>
+    <div id="publicationMeta" class="publication-meta">Loading the published snapshot…</div>
+  </section>
+
+  <div id="dataStatus" class="status-banner" role="status">Loading data…</div>
+
+  <section class="method-note">
+    <strong>How to read these results:</strong>
+    Altruist, Egalitarian, Selfish and Antisocial are overlapping indicators, not mutually exclusive categories.
+    One participant may appear in two indicators, so their percentages may add to more than 100%.
+    Small cells are hidden to protect privacy.
+  </section>
+
+  <section class="control-panel" aria-label="Dashboard filters">
+    <label>Reference country
+      <select id="countrySelect"></select>
+    </label>
+    <label>Gender
+      <select id="genderSelect">
+        <option value="all">All respondents</option>
+        <option value="female">Female</option>
+        <option value="male">Male</option>
+      </select>
+    </label>
+    <fieldset>
+      <legend>Behaviours</legend>
+      <div id="behaviourControls" class="check-grid"></div>
+    </fieldset>
+  </section>
+
+  <section class="sample-grid" aria-label="Sample sizes">
+    <article class="metric-card"><span>Class complete responses</span><strong id="classComplete">—</strong></article>
+    <article class="metric-card"><span>Class consistent responses</span><strong id="classConsistent">—</strong></article>
+    <article class="metric-card"><span>Reference complete responses</span><strong id="referenceComplete">—</strong></article>
+    <article class="metric-card"><span>Reference consistent responses</span><strong id="referenceConsistent">—</strong></article>
+  </section>
+
+  <section class="comparison-grid">
+    <article class="chart-card">
+      <div class="card-heading"><div><p class="eyebrow">CLASS</p><h2>Our group</h2></div><span class="denominator-help">Behaviour denominator: consistent responses</span></div>
+      <div id="classBars" class="bar-chart"></div>
+    </article>
+    <article class="chart-card">
+      <div class="card-heading"><div><p class="eyebrow">REFERENCE</p><h2 id="referenceTitle">International sample</h2></div><span class="denominator-help">Behaviour denominator: consistent responses</span></div>
+      <div id="referenceBars" class="bar-chart"></div>
+    </article>
+  </section>
+
+  <section class="table-card">
+    <div class="card-heading"><div><p class="eyebrow">DETAIL</p><h2>Comparison table</h2></div></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Behaviour</th><th>Class count</th><th>Class %</th><th>Reference count</th><th>Reference %</th><th>Denominator</th></tr></thead>
+        <tbody id="comparisonTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="matrix-card">
+    <div class="card-heading matrix-heading">
+      <div><p class="eyebrow">CONSISTENT RESPONSES</p><h2>Compassion × envy map</h2></div>
+      <label>Sample
+        <select id="matrixScope"><option value="class">Class</option><option value="international">Reference</option></select>
+      </label>
+    </div>
+    <p class="matrix-explainer">Rows show compassion level (low to high); columns show envy level (low to high). Values are shares of consistent responses.</p>
+    <div class="matrix-layout">
+      <span class="matrix-y-label">Higher compassion ↑</span>
+      <div id="matrixGrid" class="matrix-grid"></div>
+      <span class="matrix-x-label">Higher envy →</span>
+    </div>
+  </section>
+
+  <section class="discussion-card">
+    <p class="eyebrow">DISCUSS</p>
+    <h2>Questions for the classroom</h2>
+    <ol>
+      <li>Which differences between the class and the reference sample are largest?</li>
+      <li>How does the selected gender filter change the comparison?</li>
+      <li>Why can the four behaviour percentages add to more than 100%?</li>
+      <li>Which conclusions are not justified when a value is suppressed or a sample is small?</li>
+    </ol>
+  </section>
+</div>
+<script src="app.js"></script>
+```
+
