@@ -178,6 +178,104 @@ redact_suppressed <- function(data) {
   data
 }
 
+# Treat every released count and sample size as an equation over the same
+# underlying country x gender x response-pattern table. Checking both public
+# tables together prevents a hidden value being recovered by combining filters,
+# behaviour totals, matrix cells, or the denominators repeated in those cells.
+public_equations <- function(cells, matrix_cells, minimum_cell_size) {
+  patterns <- expand.grid(rep(list(0:1), 6), KEEP.OUT.ATTRS = FALSE)
+  names(patterns) <- decision_columns
+  patterns <- classify_preferences(patterns)
+  patterns <- patterns[patterns$consistent, ]
+  patterns <- patterns[order(patterns$compassionincreas, patterns$envyincreas), ]
+  categories <- rbind(
+    patterns[c("compassionincreas", "envyincreas", unname(public_behaviours))],
+    c(NA, NA, rep(0, length(public_behaviours) - 1L), 1)
+  )
+  atoms <- list()
+  for (scope in unique(cells$scope)) {
+    countries <- setdiff(unique(cells$country[cells$scope == scope]), "All Countries")
+    atoms[[scope]] <- expand.grid(
+      scope = scope, country = countries, gender = c("female", "male", "other"),
+      category = seq_len(nrow(categories)), stringsAsFactors = FALSE
+    )
+  }
+  atoms <- do.call(rbind, atoms)
+  consistent <- atoms$category <= 16L
+  equations <- list()
+  targets <- list()
+  groups <- integer()
+  measures <- character()
+  add_equation <- function(vector, group, measure) {
+    equations[[length(equations) + 1L]] <<- as.numeric(vector)
+    groups <<- c(groups, group)
+    measures <<- c(measures, measure)
+  }
+  all_rows <- c(lapply(seq_len(nrow(cells)), function(i) cells[i, ]),
+                lapply(seq_len(nrow(matrix_cells)), function(i) matrix_cells[i, ]))
+  for (i in seq_along(all_rows)) {
+    row <- all_rows[[i]]
+    slice <- atoms$scope == row$scope &
+      (row$country == "All Countries" | atoms$country == row$country) &
+      (row$gender == "all" | atoms$gender == row$gender)
+    if (i <= nrow(cells)) {
+      count <- slice & categories[[public_behaviours[[row$behaviour]]]][atoms$category] == 1
+      denominator <- slice & (row$denominator_type == "complete" | consistent)
+    } else {
+      count <- slice & consistent &
+        categories$compassionincreas[atoms$category] == row$compassion_level &
+        categories$envyincreas[atoms$category] == row$envy_level
+      denominator <- slice & consistent
+    }
+    count[is.na(count)] <- FALSE
+    if (row$count < minimum_cell_size) targets[[length(targets) + 1L]] <- as.numeric(count)
+    if (row$denominator_n < minimum_cell_size) targets[[length(targets) + 1L]] <- as.numeric(denominator)
+    if (row$denominator_n - row$count < minimum_cell_size) {
+      targets[[length(targets) + 1L]] <- as.numeric(denominator) - as.numeric(count)
+    }
+    add_equation(count, i, "count")
+    add_equation(denominator, i, "denominator_n")
+    if (i <= nrow(cells)) {
+      if (!is.na(row$n_complete)) add_equation(slice, i, "n_complete")
+      if (!is.na(row$n_consistent)) add_equation(slice & consistent, i, "n_consistent")
+    }
+  }
+  list(
+    equations = do.call(rbind, equations),
+    targets = if (length(targets)) unique(do.call(rbind, targets)) else matrix(numeric(), 0, nrow(atoms)),
+    groups = groups, measures = measures
+  )
+}
+
+protect_linked_public_tables <- function(cells, matrix_cells, minimum_cell_size) {
+  system <- public_equations(cells, matrix_cells, minimum_cell_size)
+  hidden <- c(cells$suppressed, matrix_cells$suppressed)
+  counts <- c(cells$count, matrix_cells$count)
+  if (nrow(system$targets)) repeat {
+    visible <- which(!hidden[system$groups])
+    if (!length(visible)) break
+    decomposition <- qr(t(system$equations[visible, , drop = FALSE]), tol = 1e-9)
+    residuals <- qr.resid(decomposition, t(system$targets))
+    recoverable <- which(colSums(residuals ^ 2) < 1e-16)
+    if (!length(recoverable)) break
+    coefficients <- qr.coef(decomposition, t(system$targets[recoverable, , drop = FALSE]))
+    remove <- integer()
+    for (j in seq_along(recoverable)) {
+      used <- which(!is.na(coefficients[, j]) & abs(coefficients[, j]) > 1e-8)
+      # Prefer withholding a count over a sample size repeated in many cells.
+      count_equations <- used[system$measures[visible[used]] == "count"]
+      if (length(count_equations)) used <- count_equations
+      candidates <- unique(system$groups[visible[used]])
+      if (!length(candidates)) stop("Could not protect a public aggregate equation.", call. = FALSE)
+      remove <- c(remove, candidates[order(counts[candidates], candidates)[[1L]]])
+    }
+    hidden[unique(remove)] <- TRUE
+  }
+  cells$suppressed <- hidden[seq_len(nrow(cells))]
+  matrix_cells$suppressed <- hidden[nrow(cells) + seq_len(nrow(matrix_cells))]
+  list(cells = cells, matrix_cells = matrix_cells)
+}
+
 aggregate_public_data <- function(class_data, reference_data, minimum_cell_size = 5L) {
   cells <- rbind(
     aggregate_behaviour_cells(class_data, "class"),
@@ -186,7 +284,6 @@ aggregate_public_data <- function(class_data, reference_data, minimum_cell_size 
   cells <- apply_primary_suppression(cells, minimum_cell_size)
   cells <- apply_secondary_suppression(cells, c("gender", "country"))
   cells <- protect_inconsistent_totals(cells)
-  cells <- redact_suppressed(cells)
 
   matrix_cells <- rbind(
     aggregate_matrix_cells(class_data, "class"),
@@ -195,6 +292,9 @@ aggregate_public_data <- function(class_data, reference_data, minimum_cell_size 
   matrix_cells <- apply_primary_suppression(matrix_cells, minimum_cell_size)
   matrix_cells <- apply_matrix_complement_suppression(matrix_cells)
   matrix_cells <- apply_secondary_suppression(matrix_cells, c("gender", "country"))
-  matrix_cells <- redact_suppressed(matrix_cells)
-  list(cells = cells, matrix_cells = matrix_cells)
+  protected <- protect_linked_public_tables(cells, matrix_cells, minimum_cell_size)
+  list(
+    cells = redact_suppressed(protected$cells),
+    matrix_cells = redact_suppressed(protected$matrix_cells)
+  )
 }

@@ -72,3 +72,61 @@ testthat::test_that("a hidden inconsistent count cannot be inferred from public 
   testthat::expect_true(all(is.na(output$n_complete)))
   testthat::expect_true(all(output$n_consistent == 18))
 })
+
+counted_patterns <- function(compassion, envy, counts, country = "Spain", inconsistent = 0L) {
+  patterns <- classify_preferences(binary_grid())
+  indexes <- vapply(seq_along(counts), function(i) {
+    which(patterns$consistent & patterns$compassionincreas == compassion[[i]] &
+            patterns$envyincreas == envy[[i]])[[1L]]
+  }, integer(1))
+  rows <- rep(indexes, counts)
+  if (inconsistent > 0L) rows <- c(rows, rep(which(!patterns$consistent)[[1L]], inconsistent))
+  data <- patterns[rows, ]
+  data$gender_code <- rep(c(1, 2), length.out = nrow(data))
+  data$country <- country
+  data
+}
+
+testthat::test_that("98 altruist and 98 egalitarian cannot reveal four antisocial responses", {
+  data <- counted_patterns(c(4, 4, 1), c(1, 4, 1), c(98, 98, 4))
+  public <- aggregate_public_data(data, data)
+  cells <- public$cells[public$cells$scope == "class" & public$cells$gender == "all", ]
+  antisocial <- cells[cells$behaviour == "antisocial", ]
+  others <- cells[cells$behaviour %in% c("altruist", "egalitarian"), ]
+  testthat::expect_true(antisocial$suppressed)
+  testthat::expect_true(is.na(antisocial$count))
+  testthat::expect_true(any(others$suppressed))
+  testthat::expect_true(any(!others$suppressed))
+  # A withheld behaviour must not be reconstructed from its matrix region.
+  for (behaviour in others$behaviour[others$suppressed]) {
+    matrix <- public$matrix_cells[public$matrix_cells$scope == "class" &
+      public$matrix_cells$gender == "all" & public$matrix_cells$compassion_level >= 2, ]
+    matrix <- matrix[if (behaviour == "altruist") matrix$envy_level <= 2 else matrix$envy_level >= 3, ]
+    testthat::expect_true(any(matrix$suppressed))
+  }
+})
+
+testthat::test_that("a behaviour total cannot reveal a protected matrix component", {
+  grid <- expand.grid(compassion = 1:4, envy = 1:4)
+  counts <- rep(20L, nrow(grid))
+  counts[grid$compassion == 3 & grid$envy == 1] <- 4L
+  data <- counted_patterns(grid$compassion, grid$envy, counts, inconsistent = 20L)
+  public <- aggregate_public_data(data, data)
+  altruist <- public$cells[public$cells$scope == "class" & public$cells$gender == "all" &
+    public$cells$behaviour == "altruist", ]
+  components <- public$matrix_cells[public$matrix_cells$scope == "class" &
+    public$matrix_cells$gender == "all" & public$matrix_cells$compassion_level >= 2 &
+    public$matrix_cells$envy_level <= 2, ]
+  protected <- components[components$compassion_level == 3 & components$envy_level == 1, ]
+  testthat::expect_true(protected$suppressed)
+  testthat::expect_true(altruist$suppressed || sum(components$suppressed) >= 2L)
+  testthat::expect_true(any(!public$matrix_cells$suppressed))
+})
+
+testthat::test_that("safe dense tables retain all behaviour and matrix cells", {
+  grid <- expand.grid(compassion = 1:4, envy = 1:4)
+  data <- counted_patterns(grid$compassion, grid$envy, rep(20L, 16), inconsistent = 20L)
+  public <- aggregate_public_data(data, data)
+  testthat::expect_false(any(public$cells$suppressed))
+  testthat::expect_false(any(public$matrix_cells$suppressed))
+})

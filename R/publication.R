@@ -1,7 +1,8 @@
 run_checked_command <- function(command, args = character(), working_directory = ".") {
   old <- setwd(working_directory)
   on.exit(setwd(old), add = TRUE)
-  output <- suppressWarnings(system2(command, args = args, stdout = TRUE, stderr = TRUE))
+  # system2 assembles a command line; preserve each supplied argument as one value.
+  output <- suppressWarnings(system2(command, args = shQuote(args), stdout = TRUE, stderr = TRUE))
   status <- attr(output, "status")
   if (is.null(status)) status <- 0L
   if (status != 0L) {
