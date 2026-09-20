@@ -196,7 +196,10 @@ public_equations <- function(cells, matrix_cells, minimum_cell_size) {
   for (scope in unique(cells$scope)) {
     countries <- setdiff(unique(cells$country[cells$scope == scope]), "All Countries")
     atoms[[scope]] <- expand.grid(
-      scope = scope, country = countries, gender = c("female", "male", "other"),
+      # Use the conservative binary projection even when responses also have
+      # other/missing gender values. An extra unknown gender must not disguise
+      # deductions when released totals prove that its population is zero.
+      scope = scope, country = countries, gender = c("female", "male"),
       category = seq_len(nrow(categories)), stringsAsFactors = FALSE
     )
   }
@@ -254,6 +257,9 @@ protect_linked_public_tables <- function(cells, matrix_cells, minimum_cell_size)
   if (nrow(system$targets)) repeat {
     visible <- which(!hidden[system$groups])
     if (!length(visible)) break
+    # Sample-size equations repeat in almost every cell. Keep one current
+    # provider of each equation; the next pass still considers all providers.
+    visible <- visible[!duplicated(system$equations[visible, , drop = FALSE])]
     decomposition <- qr(t(system$equations[visible, , drop = FALSE]), tol = 1e-9)
     residuals <- qr.resid(decomposition, t(system$targets))
     recoverable <- which(colSums(residuals ^ 2) < 1e-16)

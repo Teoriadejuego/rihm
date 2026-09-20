@@ -227,11 +227,11 @@
         ? new Date(metadata.generated_at_utc).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })
         : "Not yet published";
       byId("publicationMeta").innerHTML = `
-        <strong>Published snapshot</strong><br>${updated} UTC<br>
-        <span>${metadata.publication_id || "Unknown"}</span>`;
+        <strong>Classroom results</strong><br>${updated}${metadata.generated_at_utc ? " UTC" : ""}
+        ${metadata.generated_at_utc ? `<br><span>${metadata.publication_id || "Unknown"}</span>` : ""}`;
       if (!Array.isArray(state.data.cells) || !state.data.cells.length) {
-        setStatus("No classroom snapshot has been published yet.", true);
-        document.querySelectorAll(".sample-grid, .comparison-grid, .table-card, .matrix-card").forEach((node) => {
+        setStatus("The dashboard is ready. Classroom results will appear here after the teacher publishes a snapshot.");
+        document.querySelectorAll(".control-panel, .guided-insight, .sample-grid, .comparison-grid, .table-card, .matrix-card").forEach((node) => {
           node.style.display = "none";
         });
         return;

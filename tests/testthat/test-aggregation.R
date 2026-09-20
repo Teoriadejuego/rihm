@@ -130,3 +130,23 @@ testthat::test_that("safe dense tables retain all behaviour and matrix cells", {
   testthat::expect_false(any(public$cells$suppressed))
   testthat::expect_false(any(public$matrix_cells$suppressed))
 })
+
+testthat::test_that("gender totals cannot expose a small behaviour through another gender", {
+  set.seed(18)
+  data <- classify_preferences(binary_grid()[sample(1:64, 160, replace = TRUE), ])
+  data$gender_code <- rep(c(1, 2), 80)
+  data$country <- "Spain"
+  raw <- aggregate_behaviour_cells(data, "class")
+  testthat::expect_equal(raw$count[raw$gender == "male" & raw$behaviour == "antisocial"], 1)
+  public <- aggregate_public_data(data, data)
+  cells <- public$cells[public$cells$scope == "class", ]
+  get_count <- function(gender, behaviour) {
+    cells$count[cells$gender == gender & cells$behaviour == behaviour]
+  }
+  female_consistent <- unique(stats::na.omit(cells$n_consistent[cells$gender == "female"]))
+  operands <- c(get_count("all", "antisocial"), get_count("female", "altruist"),
+                get_count("female", "egalitarian"))
+  # Previously: 8 - (23 - 6 - 10) exposed the protected male count of one.
+  testthat::expect_true(!length(female_consistent) || anyNA(operands))
+  testthat::expect_true(is.na(get_count("male", "antisocial")))
+})

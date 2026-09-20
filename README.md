@@ -1,5 +1,7 @@
 # Mini-dictator classroom dashboard
 
+Live dashboard: [teoriadejuego.github.io/rihm](https://teoriadejuego.github.io/rihm/).
+
 This project replaces a shared Shiny application with two separate components:
 
 - a local Shiny publisher used only by the teacher; and
@@ -54,6 +56,8 @@ The project deliberately reproduces the original rules for `Selfish`, `Spiteful`
 ## Privacy model
 
 Every public cell is suppressed when its count, denominator or complementary count is below 5. Secondary suppression hides an additional related cell when a gender or country total would otherwise reveal the protected value. Suppressed cells contain `null`, not the underlying number.
+
+A final cross-table check adds suppression when protected small values can be reconstructed by linear combinations of the published behaviour cells, matrix cells and sample sizes, including combinations across filters.
 
 `student/data/public_results.json` contains only publication metadata, aggregate behaviour cells and aggregate compassion × envy matrix cells. The pre-publish scan rejects row-level identifiers, session fields and supplied session-code values.
 
