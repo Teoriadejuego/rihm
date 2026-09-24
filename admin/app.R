@@ -51,16 +51,6 @@ ui <- page_fillable(
       ),
       uiOutput("configuration_status")
     ),
-    if (cloud_mode) card(
-      card_header("Conexiones privadas de esta sesión"),
-      p("Para probar, selecciona Demonstration y usa DEMO-RIHM. Para datos reales, introduce tus credenciales de Qualtrics. Para publicar, añade un token de GitHub limitado al repositorio Teoriadejuego/rihm con Contents: Read and write. Estos campos no se guardan en GitHub ni entre sesiones.", class = "privacy-note"),
-      layout_columns(
-        passwordInput("github_token", "Token de GitHub para publicar"),
-        passwordInput("qualtrics_api_key", "Clave API de Qualtrics"),
-        textInput("qualtrics_base_url", "Servidor de Qualtrics", placeholder = "centro-de-datos.qualtrics.com"),
-        col_widths = c(4, 4, 4)
-      )
-    ),
     layout_columns(
       col_widths = c(4, 8),
       card(
@@ -121,8 +111,7 @@ server <- function(input, output, session) {
   status <- reactiveVal("No publication has been attempted in this session.")
   github_token <- function() {
     req(authenticated())
-    supplied <- input$github_token
-    if (is.character(supplied) && nzchar(trimws(supplied))) trimws(supplied) else Sys.getenv("GITHUB_PUBLICATION_TOKEN")
+    Sys.getenv("GITHUB_PUBLICATION_TOKEN")
   }
 
   refresh_snapshot_input <- function() {
@@ -143,9 +132,7 @@ server <- function(input, output, session) {
     if (isTRUE(authenticated())) refresh_snapshot_input() else {
       candidate(NULL)
       status("No publication has been attempted in this session.")
-      for (field in c("github_token", "qualtrics_api_key", "qualtrics_base_url", "session_code")) {
-        updateTextInput(session, field, value = "")
-      }
+      updateTextInput(session, "session_code", value = "")
     }
   }, ignoreNULL = FALSE)
 
@@ -168,7 +155,13 @@ server <- function(input, output, session) {
       div(
         class = "status-box",
         strong("Configuration loaded. "),
-        if (nzchar(pages)) tags$a("Open student dashboard", href = pages, target = "_blank", rel = "noopener") else "GitHub Pages URL still needs to be set in config/config.yml."
+        if (nzchar(pages)) tags$a("Open student dashboard", href = pages, target = "_blank", rel = "noopener") else "GitHub Pages URL still needs to be set in config/config.yml.",
+        if (cloud_mode && !all(nzchar(Sys.getenv(c("QUALTRICS_API_KEY", "QUALTRICS_BASE_URL"))))) {
+          p("La conexión con los datos reales está pendiente de configuración. Puedes usar la demostración.")
+        },
+        if (cloud_mode && !nzchar(Sys.getenv("GITHUB_PUBLICATION_TOKEN"))) {
+          p("La publicación de resultados está pendiente de configurar en el servidor.")
+        }
       )
     }
   })
@@ -188,11 +181,7 @@ server <- function(input, output, session) {
         value <- if (is_demo) {
           prepare_demo_candidate(config_result$value, code)
         } else {
-          credentials <- if (cloud_mode) list(
-            api_key = input$qualtrics_api_key,
-            base_url = input$qualtrics_base_url
-          ) else NULL
-          downloaded <- download_surveys_once(config_result$value, credentials = credentials)
+          downloaded <- download_surveys_once(config_result$value)
           incProgress(0.45, detail = "Normalising and classifying responses")
           prepare_publication_candidate(downloaded, code, config_result$value)
         }
