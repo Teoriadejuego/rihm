@@ -4,10 +4,22 @@ Live dashboard: [teoriadejuego.github.io/rihm](https://teoriadejuego.github.io/r
 
 This project replaces a shared Shiny application with two separate components:
 
-- a local Shiny publisher used only by the teacher; and
+- a password-protected Shiny publisher used only by the teacher, hosted on shinyapps.io or run locally; and
 - a static Quarto dashboard that can be opened simultaneously by the whole class, regardless of whether a particular group is smaller or larger than the original estimate.
 
-Qualtrics credentials, session codes and row-level survey data remain on the teacher's computer. GitHub receives only privacy-protected aggregate JSON and static site source.
+In local mode, Qualtrics credentials, session codes and row-level survey data remain on the teacher's computer. In hosted mode, the private teacher session processes them on shinyapps.io. GitHub receives only privacy-protected aggregate JSON and static site source.
+
+## Online teacher panel
+
+The hosted panel does not require R on the teacher's computer. Sign in with the private teacher credentials; the student dashboard remains public and independent of Shiny.
+
+For a test, select **Demonstration: synthetic responses**, enter `DEMO-RIHM`, then **Load demonstration**. Review the aggregate cells, confirm the review, and use **Validate aggregate data**. This does not publish or replace the student snapshot.
+
+For real responses, enter the Qualtrics API key and data-center hostname in **Conexiones privadas de esta sesión**. The two survey IDs are configured privately at deployment. To publish, enter a GitHub fine-grained personal access token restricted to this repository with **Contents: Read and write**. Keys entered in the panel are session-only; enter them again after signing out or reconnecting. Never paste credentials into an issue, commit, or the public student page.
+
+The hosted publisher commits only the two public JSON files through the GitHub API. GitHub Actions then runs tests, renders, scans and deploys the student dashboard. Snapshot history is read from GitHub commits; no durable server filesystem is required. A failed deployment leaves the last successful Pages version online. Login expires after 15 minutes of inactivity; five failed logins lock the R process for five minutes. Use one worker for the teacher app.
+
+For maintainers: copy `config/hosting.Renviron.example` to ignored `config/hosting.Renviron`, configure a unique teacher password of at least 20 characters and the survey IDs, then run `Rscript scripts/prepare_hosted_bundle.R`. Deploy the printed bundle directory with `rsconnect::deployApp(..., appName = "rihm-profesor", account = "teoria-juegos", server = "shinyapps.io")`. The bundle includes private `hosting.env`; keep it outside public Git. No raw data, Git working tree, local `.Renviron`, or local `config.yml` is bundled.
 
 ## First-time setup
 

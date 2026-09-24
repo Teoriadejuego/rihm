@@ -9,9 +9,12 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     bslib,
+    httr2,
     jsonlite,
     qualtRics,
     shiny,
+    shinymanager,
+    sodium,
     testthat,
     uuid,
     yaml

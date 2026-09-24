@@ -1,0 +1,13 @@
+# Private deployment settings. Copy to config/hosting.Renviron (ignored).
+# Never paste tokens into the chat or commit that private file.
+TEACHER_USERNAME=profesor
+TEACHER_PASSWORD=
+GITHUB_PUBLICATION_TOKEN=
+GITHUB_REPOSITORY=Teoriadejuego/rihm
+GITHUB_PUBLICATION_BRANCH=main
+PAGES_BASE_URL=https://teoriadejuego.github.io/rihm/
+QUALTRICS_API_KEY=
+QUALTRICS_BASE_URL=
+QUALTRICS_REFERENCE_SURVEY_ID=
+QUALTRICS_CLASS_SURVEY_ID=
+QUALTRICS_SESSION_COLUMN=session_password

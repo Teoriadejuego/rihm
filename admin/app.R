@@ -5,6 +5,11 @@ current_directory <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 project_root <- if (basename(current_directory) == "admin") dirname(current_directory) else current_directory
 source(file.path(project_root, "R", "load_all.R"))
 source_project_modules(project_root)
+cloud_mode <- is_cloud_teacher()
+auth_setup <- if (cloud_mode) tryCatch(
+  list(check = make_teacher_auth_checker(), error = NULL),
+  error = function(error) list(check = NULL, error = conditionMessage(error))
+) else list(check = NULL, error = NULL)
 
 config_result <- tryCatch(
   list(value = read_app_config(project_root), error = NULL),
@@ -46,6 +51,16 @@ ui <- page_fillable(
       ),
       uiOutput("configuration_status")
     ),
+    if (cloud_mode) card(
+      card_header("Conexiones privadas de esta sesión"),
+      p("Para probar, selecciona Demonstration y usa DEMO-RIHM. Para datos reales, introduce tus credenciales de Qualtrics. Para publicar, añade un token de GitHub limitado al repositorio Teoriadejuego/rihm con Contents: Read and write. Estos campos no se guardan en GitHub ni entre sesiones.", class = "privacy-note"),
+      layout_columns(
+        passwordInput("github_token", "Token de GitHub para publicar"),
+        passwordInput("qualtrics_api_key", "Clave API de Qualtrics"),
+        textInput("qualtrics_base_url", "Servidor de Qualtrics", placeholder = "centro-de-datos.qualtrics.com"),
+        col_widths = c(4, 4, 4)
+      )
+    ),
     layout_columns(
       col_widths = c(4, 8),
       card(
@@ -66,7 +81,7 @@ ui <- page_fillable(
           "I have reviewed the diagnostics and aggregate preview.",
           value = FALSE
         ),
-        actionButton("validate_local", "Validate and render locally", class = "btn-outline-primary w-100"),
+        actionButton("validate_local", if (cloud_mode) "Validate aggregate data" else "Validate and render locally", class = "btn-outline-primary w-100"),
         br(), br(),
         actionButton("publish", "Publish to GitHub Pages", class = "btn-success w-100"),
         hr(),
@@ -90,16 +105,52 @@ ui <- page_fillable(
   )
 )
 
+if (cloud_mode) {
+  options(shiny.sanitize.errors = TRUE)
+  teacher_panel_ui <- ui
+  ui <- if (!is.null(auth_setup$error)) {
+    fluidPage(h2("Teacher panel setup required"), p(auth_setup$error))
+  } else fluidPage(uiOutput("teacher_access_ui"))
+}
+
 server <- function(input, output, session) {
+  authenticated <- if (!cloud_mode) function() TRUE else if (!is.null(auth_setup$error)) {
+    function() FALSE
+  } else teacher_auth_server(teacher_panel_ui, auth_setup$check, input, output, session)
   candidate <- reactiveVal(NULL)
   status <- reactiveVal("No publication has been attempted in this session.")
+  github_token <- function() {
+    req(authenticated())
+    supplied <- input$github_token
+    if (is.character(supplied) && nzchar(trimws(supplied))) trimws(supplied) else Sys.getenv("GITHUB_PUBLICATION_TOKEN")
+  }
 
   refresh_snapshot_input <- function() {
-    updateSelectInput(session, "snapshot", choices = snapshot_choices(project_root))
+    req(authenticated())
+    choices <- if (cloud_mode) {
+      if (!nzchar(github_token())) return(invisible(NULL))
+      tryCatch({
+        history <- list_github_snapshots(config_result$value, token = github_token())
+        stats::setNames(history$ref, history$label)
+      }, error = function(error) {
+        status(conditionMessage(error))
+        character()
+      })
+    } else snapshot_choices(project_root)
+    updateSelectInput(session, "snapshot", choices = choices)
   }
-  refresh_snapshot_input()
+  observeEvent(authenticated(), {
+    if (isTRUE(authenticated())) refresh_snapshot_input() else {
+      candidate(NULL)
+      status("No publication has been attempted in this session.")
+      for (field in c("github_token", "qualtrics_api_key", "qualtrics_base_url", "session_code")) {
+        updateTextInput(session, field, value = "")
+      }
+    }
+  }, ignoreNULL = FALSE)
 
   observeEvent(input$data_source, {
+    req(authenticated())
     candidate(NULL)
     updateCheckboxInput(session, "confirm", value = FALSE)
     is_demo <- identical(input$data_source, "demo")
@@ -108,6 +159,7 @@ server <- function(input, output, session) {
   })
 
   output$configuration_status <- renderUI({
+    req(authenticated())
     if (!is.null(config_result$error)) {
       div(class = "alert alert-danger", config_result$error)
     } else {
@@ -122,7 +174,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$download, {
-    req(config_result$value)
+    req(authenticated(), config_result$value)
     code <- trimws(input$session_code)
     if (!nzchar(code)) {
       showNotification("Enter a class session code first.", type = "error")
@@ -136,7 +188,11 @@ server <- function(input, output, session) {
         value <- if (is_demo) {
           prepare_demo_candidate(config_result$value, code)
         } else {
-          downloaded <- download_surveys_once(config_result$value)
+          credentials <- if (cloud_mode) list(
+            api_key = input$qualtrics_api_key,
+            base_url = input$qualtrics_base_url
+          ) else NULL
+          downloaded <- download_surveys_once(config_result$value, credentials = credentials)
           incProgress(0.45, detail = "Normalising and classifying responses")
           prepare_publication_candidate(downloaded, code, config_result$value)
         }
@@ -157,6 +213,7 @@ server <- function(input, output, session) {
   })
 
   output$candidate_summary <- renderUI({
+    req(authenticated())
     value <- candidate()
     if (is.null(value)) return(div(class = "alert alert-secondary", "No candidate loaded."))
     cells <- value$results$cells
@@ -171,12 +228,12 @@ server <- function(input, output, session) {
   })
 
   output$diagnostics <- renderTable({
-    req(candidate())
+    req(authenticated(), candidate())
     format_diagnostics(candidate())
   }, striped = TRUE, bordered = FALSE, spacing = "s")
 
   output$public_preview <- renderTable({
-    req(candidate())
+    req(authenticated(), candidate())
     preview <- candidate()$results$cells
     preview$count <- ifelse(preview$suppressed, "Suppressed", as.character(preview$count))
     preview$percentage <- ifelse(preview$suppressed, "Suppressed", paste0(preview$percentage, "%"))
@@ -184,6 +241,7 @@ server <- function(input, output, session) {
   }, striped = TRUE, bordered = FALSE, spacing = "xs")
 
   perform_publication <- function(results, session_code = character(), push = TRUE) {
+    req(authenticated())
     if (!isTRUE(input$confirm)) {
       showNotification("Confirm that you reviewed the candidate first.", type = "warning")
       return(NULL)
@@ -192,7 +250,13 @@ server <- function(input, output, session) {
     status(paste0(label, " …"))
     result <- tryCatch(
       withProgress(message = label, value = 0.05, {
-        publish_results(
+        if (cloud_mode && push) publish_results_github(
+          results, config_result$value, secrets = session_code, token = github_token(), verify = TRUE
+        ) else if (cloud_mode) {
+          validate_github_public_results(results, secrets = session_code)
+          list(publication_id = results$metadata$publication_id, scanned_files = 2L,
+               deployment = list(message = "Aggregate data validated. Tests, rendering and artifact scanning run on GitHub when published."))
+        } else publish_results(
           results,
           config_result$value,
           secrets = session_code,
@@ -218,25 +282,25 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$validate_local, {
-    req(candidate(), config_result$value)
+    req(authenticated(), candidate(), config_result$value)
     perform_publication(candidate()$results, input$session_code, push = FALSE)
   })
 
   observeEvent(input$publish, {
-    req(candidate(), config_result$value)
+    req(authenticated(), candidate(), config_result$value)
     perform_publication(candidate()$results, input$session_code, push = TRUE)
   })
 
   observeEvent(input$refresh_snapshots, refresh_snapshot_input())
 
   observeEvent(input$rollback, {
-    req(config_result$value)
+    req(authenticated(), config_result$value)
     if (!nzchar(input$snapshot)) {
       showNotification("Select a snapshot first.", type = "warning")
       return()
     }
     rolled_back <- tryCatch(
-      prepare_rollback(read_public_snapshot(input$snapshot)),
+      prepare_rollback(if (cloud_mode) read_github_snapshot(input$snapshot, config_result$value, token = github_token()) else read_public_snapshot(input$snapshot)),
       error = function(error) error
     )
     if (inherits(rolled_back, "error")) {
@@ -246,7 +310,7 @@ server <- function(input, output, session) {
     perform_publication(rolled_back, push = TRUE)
   })
 
-  output$publication_status <- renderText(status())
+  output$publication_status <- renderText({ req(authenticated()); status() })
 }
 
 shinyApp(ui, server)

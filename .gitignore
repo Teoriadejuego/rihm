@@ -1,5 +1,9 @@
 .Renviron
 config/config.yml
+config/hosting.Renviron
+config/teacher-access.txt
+hosting.env
+rsconnect/
 _site/
 .quarto/
 staging/
@@ -7,4 +11,3 @@ snapshots/
 *.Rproj.user/
 .Rhistory
 .RData
-

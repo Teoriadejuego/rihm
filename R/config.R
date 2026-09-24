@@ -1,4 +1,24 @@
 read_app_config <- function(project_root = ".", path = NULL) {
+  if (identical(Sys.getenv("TEACHER_HOST_MODE"), "cloud")) {
+    root <- normalizePath(project_root, winslash = "/", mustWork = TRUE)
+    return(list(
+      project_root = root,
+      locations_file = file.path(root, "config", "reference_locations.csv"),
+      qualtrics = list(
+        reference_survey_id = Sys.getenv("QUALTRICS_REFERENCE_SURVEY_ID"),
+        class_survey_id = Sys.getenv("QUALTRICS_CLASS_SURVEY_ID"),
+        session_code_column = Sys.getenv("QUALTRICS_SESSION_COLUMN", "session_password")
+      ),
+      privacy = list(minimum_cell_size = 5L),
+      publication = list(
+        backend = "github_api",
+        github_repository = Sys.getenv("GITHUB_REPOSITORY", "Teoriadejuego/rihm"),
+        branch = Sys.getenv("GITHUB_PUBLICATION_BRANCH", "main"),
+        pages_base_url = Sys.getenv("PAGES_BASE_URL", "https://teoriadejuego.github.io/rihm/"),
+        verify_timeout_seconds = 300L
+      )
+    ))
+  }
   if (is.null(path)) {
     path <- file.path(project_root, "config", "config.yml")
   }
@@ -45,4 +65,3 @@ read_reference_locations <- function(config) {
   }
   unique(locations)
 }
-
