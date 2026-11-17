@@ -85,6 +85,17 @@ scan_public_files <- function(project_root, secrets = character()) {
       stop("The public manifest does not match the exact results bytes.", call. = FALSE)
     }
   }
+  built_data <- file.path(project_root, "student", "_site", "data")
+  if (dir.exists(built_data)) {
+    for (name in c("public_results.json", "public_manifest.json")) {
+      original <- file.path(project_root, "student", "data", name)
+      built <- file.path(built_data, name)
+      if (!identical(readBin(original, "raw", file.info(original)$size),
+                     readBin(built, "raw", file.info(built)$size))) {
+        stop("The built artifact differs from the source publication. Rebuild before deployment.", call. = FALSE)
+      }
+    }
+  }
   invisible(files)
 }
 

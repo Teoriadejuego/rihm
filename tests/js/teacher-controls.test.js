@@ -14,7 +14,11 @@ function harness({ lateShiny = false } = {}) {
   };
   const shiny = {
     setInputValue: vi.fn(),
-    addCustomMessageHandler: vi.fn((name, handler) => handlers.set(name, handler))
+    addCustomMessageHandler: vi.fn((name, handler) => {
+      // Shiny rejects callbacks that do not declare exactly one argument.
+      if (handler.length !== 1) throw new Error('Shiny handlers require one argument');
+      handlers.set(name, handler);
+    })
   };
   const window = {
     jQuery: () => ({ on: (name, handler) => lifecycle.set(name.split('.')[0], handler) })

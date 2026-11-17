@@ -57,7 +57,7 @@
       for (const id of Object.keys(controlState)) controlState[id] = state?.[id] === true;
       applyControls();
     });
-    window.Shiny.addCustomMessageHandler("teacher-exit-fullscreen", () => {
+    window.Shiny.addCustomMessageHandler("teacher-exit-fullscreen", (_message) => {
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     });
     handlersInstalled = true;

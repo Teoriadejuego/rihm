@@ -14,6 +14,8 @@ Verification date: 2026-11-18 (Europe/Madrid).
 | Accessibility | Automated axe checks pass at desktop/mobile sizes; visual inspection completed, not a full human accessibility audit |
 | Researcher browser | Real private login, five sections, all twelve slides, synthetic preview, hidden credential inputs and logout checked |
 | Real source integration | Both Qualtrics surveys accessible; real candidate passes contract and privacy checks |
+| Live publication | Hosted Update and publish generated publication `20261117T232755Z-b16fbc00`; the panel confirmed it on Pages |
+| Live idempotency | Reusing identical aggregates produced no write or new publication, with mutation permission explicitly denied during the check |
 | Cross-runtime integration | R-produced real aggregate JSON accepted and rendered by the JavaScript reader |
 | Static delivery | 30 clients: 150/150 HTTP 200; 60: 300/300; 200: 1000/1000 with five resources per client |
 | Credential isolation | Exact private values absent from every tracked/unignored source file; private environment files remain ignored |
@@ -47,7 +49,9 @@ dependency entries; the package registry offered no patched release during verif
 Those packages are build/test tools and are not shipped in the browser bundle. Their
 glob patterns are repository-controlled. Recheck the advisory when updating the lockfile.
 
-The Shiny coordinator requires one application worker. Per-snapshot suppression does
+The Shiny coordinator requires one application worker. The deployed application was
+checked through the hosting API: maximum one Shiny worker and one starting instance.
+Per-snapshot suppression does
 not guarantee anonymity across successive public versions. Public history persists.
 
 ## Release verification
@@ -58,5 +62,12 @@ deployed to the existing shinyapps.io application; real login, full-screen teach
 and keyboard navigation were verified online. An online check then found a Shiny
 control-event registration issue; five regression tests cover its correction.
 
-Real publication verification will be recorded after the corrected panel is deployed.
-Deterministic test fixtures have not replaced the public JSON files.
+The real publication [passed its own build and deployment](https://github.com/Teoriadejuego/rihm/actions/runs/44199602256).
+The hosted panel reported “Published and confirmed on the student site” and signed
+out successfully. A separate reader verified schema 2.0.0, matching publication IDs,
+the semantic fingerprint and the SHA256 of the exact served results bytes.
+
+The final control regression also verifies Shiny's requirement that each custom
+message callback accepts one argument. A real local browser checked disabled controls
+before cooldown, their later re-enabling, read recovery and server-requested fullscreen
+exit. Deterministic test fixtures never replaced the public JSON files.
