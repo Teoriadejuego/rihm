@@ -107,11 +107,11 @@ teacher_auth_server <- function(panel_ui, check_credentials, input, output, sess
     if (authenticated()) {
       shiny::tagList(
         shiny::div(style = "padding: 10px; text-align: right;",
-          shiny::actionButton("teacher_logout", "Cerrar sesión")),
+          shiny::actionButton("teacher_logout", "Sign out")),
         panel_ui
       )
     } else {
-      shinymanager::auth_ui("teacher_login", choose_language = "es")
+      shinymanager::auth_ui("teacher_login", choose_language = "en")
     }
   })
   authenticated

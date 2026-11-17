@@ -33,6 +33,9 @@ testthat::test_that("per-request credentials are restored after both success and
   result <- download(qualtrics_test_config(), credentials)
   testthat::expect_identical(calls, c("SV_REFERENCE", "SV_CLASS"))
   testthat::expect_equal(nrow(result$class), 1L)
+  testthat::expect_identical(result$export_time_zone, "UTC")
+  testthat::expect_false(is.na(parse_qualtrics_end_date(result$class_source_at_utc)))
+  testthat::expect_false(is.na(parse_qualtrics_end_date(result$reference_source_at_utc)))
   testthat::expect_identical(Sys.getenv("QUALTRICS_API_KEY"), "previous-key")
   testthat::expect_identical(Sys.getenv("QUALTRICS_BASE_URL"), "previous.qualtrics.com")
   failing <- qualtrics_test_download(function(survey_id) {
@@ -61,7 +64,8 @@ testthat::test_that("absent credentials remain absent after a per-request downlo
 testthat::test_that("each fetch deletes its private temporary directory even on failure", {
   withr::local_envvar(c(QUALTRICS_API_KEY = "test-key", QUALTRICS_BASE_URL = "fra1.qualtrics.com"))
   paths <- character()
-  request <- function(surveyID, convert, label, verbose, tmp_dir) {
+  request <- function(surveyID, convert, label, verbose, tmp_dir, time_zone) {
+    testthat::expect_identical(time_zone, "UTC")
     testthat::expect_false(convert)
     testthat::expect_false(label)
     testthat::expect_false(verbose)

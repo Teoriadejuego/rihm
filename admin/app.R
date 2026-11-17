@@ -1,305 +1,257 @@
+if (.Platform$OS.type == "windows" && !isTRUE(l10n_info()[["UTF-8"]])) {
+  invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+}
 library(shiny)
 library(bslib)
 
 current_directory <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 project_root <- if (basename(current_directory) == "admin") dirname(current_directory) else current_directory
-source(file.path(project_root, "R", "load_all.R"))
+source(file.path(project_root, "R", "load_all.R"), encoding = "UTF-8")
 source_project_modules(project_root)
+if (!exists("make_teacher_coordinator", mode = "function")) source(file.path(project_root, "R", "teacher_coordinator.R"), encoding = "UTF-8")
+for (module in c("content.R", "layout.R")) source(file.path(project_root, "admin", "modules", module), encoding = "UTF-8")
+addResourcePath("teacher-assets", file.path(project_root, "admin", "www"))
+
 cloud_mode <- is_cloud_teacher()
+options(shiny.sanitize.errors = TRUE)
 auth_setup <- if (cloud_mode) tryCatch(
   list(check = make_teacher_auth_checker(), error = NULL),
-  error = function(error) list(check = NULL, error = conditionMessage(error))
+  error = function(error) list(check = NULL, error = "Private teacher authentication is not configured.")
 ) else list(check = NULL, error = NULL)
+config_result <- tryCatch(list(value = read_app_config(project_root), error = NULL),
+  error = function(error) list(value = NULL, error = "The private server configuration could not be loaded."))
 
-config_result <- tryCatch(
-  list(value = read_app_config(project_root), error = NULL),
-  error = function(error) list(value = NULL, error = conditionMessage(error))
+# I(1) forces a separate process instead of future's single-worker sequential
+# fallback. This is one compute worker shared by all sessions, not one per user.
+future::plan(future::multisession, workers = I(1L))
+teacher_coordinator <- make_teacher_coordinator(cooldown_seconds = 180)
+teacher_panel_ui <- teacher_panel_layout()
+ui <- fluidPage(
+  theme = bs_theme(version = 5, primary = "#096b67", bg = "#edf3f6", fg = "#213746"),
+  tags$head(tags$link(rel = "stylesheet", href = "teacher-assets/research.css"),
+    tags$script(src = "teacher-assets/research.js")),
+  if (!is.null(auth_setup$error)) div(class = "research-empty", h2("Teacher setup required"), p(auth_setup$error))
+  else if (cloud_mode) uiOutput("teacher_access_ui") else teacher_panel_ui
 )
-
-format_diagnostics <- function(candidate) {
-  class <- transform(candidate$class$diagnostics, Scope = "Class")
-  reference <- transform(candidate$reference$diagnostics, Scope = "International")
-  result <- rbind(class, reference)
-  result[c("Scope", "metric", "value")]
-}
-
-snapshot_choices <- function(root) {
-  files <- list.files(file.path(root, "snapshots"), pattern = "\\.json$", full.names = TRUE)
-  if (!length(files)) return(character())
-  stats <- file.info(files)
-  files <- files[order(stats$mtime, decreasing = TRUE)]
-  stats::setNames(files, sub("\\.json$", "", basename(files)))
-}
-
-ui <- page_fillable(
-  theme = bs_theme(version = 5, bootswatch = "flatly", primary = "#1B6EC2"),
-  tags$head(tags$style(HTML("
-    body { background: #f4f8fd; }
-    .navbar { box-shadow: 0 3px 15px rgba(11,61,145,.12); }
-    .card { border: 1px solid #dfe9f7; box-shadow: 0 2px 10px rgba(11,61,145,.06); }
-    .status-box { padding: 12px 14px; border-radius: 10px; background: #eef5ff; }
-    .privacy-note { color: #526071; font-size: .92rem; }
-  "))),
-  layout_column_wrap(
-    width = 1,
-    heights_equal = "row",
-    card(
-      card_header("Mini-dictator classroom publisher"),
-      p(
-        "Download once from Qualtrics, inspect the aggregate preview, and publish a static classroom snapshot.",
-        class = "privacy-note"
-      ),
-      uiOutput("configuration_status")
-    ),
-    layout_columns(
-      col_widths = c(4, 8),
-      card(
-        card_header("1. Download and validate"),
-        radioButtons("data_source", "Data source", choices = c(
-          "Qualtrics: real responses" = "qualtrics",
-          "Demonstration: synthetic responses" = "demo"
-        )),
-        textInput("session_code", "Class session code", placeholder = "Enter the code used by students"),
-        actionButton("download", "Download once from Qualtrics", class = "btn-primary w-100"),
-        conditionalPanel(
-          condition = "input.data_source === 'demo'",
-          p("DEMONSTRATION ONLY. Generated test data; no real participants or Qualtrics connection.", class = "alert alert-warning")
-        ),
-        hr(),
-        checkboxInput(
-          "confirm",
-          "I have reviewed the diagnostics and aggregate preview.",
-          value = FALSE
-        ),
-        actionButton("validate_local", if (cloud_mode) "Validate aggregate data" else "Validate and render locally", class = "btn-outline-primary w-100"),
-        br(), br(),
-        actionButton("publish", "Publish to GitHub Pages", class = "btn-success w-100"),
-        hr(),
-        selectInput("snapshot", "Previous public snapshot", choices = character()),
-        actionButton("refresh_snapshots", "Refresh snapshot list", class = "btn-outline-secondary"),
-        actionButton("rollback", "Republish selected snapshot", class = "btn-warning")
-      ),
-      card(
-        card_header("2. Review"),
-        uiOutput("candidate_summary"),
-        h5("Private validation diagnostics"),
-        tableOutput("diagnostics"),
-        h5("Exact public behaviour cells"),
-        div(style = "max-height: 390px; overflow-y: auto;", tableOutput("public_preview"))
-      )
-    ),
-    card(
-      card_header("3. Publication status"),
-      verbatimTextOutput("publication_status", placeholder = TRUE)
-    )
-  )
-)
-
-if (cloud_mode) {
-  options(shiny.sanitize.errors = TRUE)
-  teacher_panel_ui <- ui
-  ui <- if (!is.null(auth_setup$error)) {
-    fluidPage(h2("Teacher panel setup required"), p(auth_setup$error))
-  } else fluidPage(uiOutput("teacher_access_ui"))
-}
 
 server <- function(input, output, session) {
-  authenticated <- if (!cloud_mode) function() TRUE else if (!is.null(auth_setup$error)) {
-    function() FALSE
-  } else teacher_auth_server(teacher_panel_ui, auth_setup$check, input, output, session)
+  authenticated <- if (!cloud_mode) function() TRUE else if (!is.null(auth_setup$error)) function() FALSE
+    else teacher_auth_server(teacher_panel_ui, auth_setup$check, input, output, session)
+  owner <- session$token
+  lifecycle <- new.env(parent = emptyenv())
+  lifecycle$alive <- TRUE
   candidate <- reactiveVal(NULL)
-  status <- reactiveVal("No publication has been attempted in this session.")
-  github_token <- function() {
-    req(authenticated())
-    Sys.getenv("GITHUB_PUBLICATION_TOKEN")
+  operation_id <- reactiveVal(NULL)
+  phase <- reactiveVal(NULL)
+  status <- reactiveVal("Ready. The last published group remains available to students.")
+  last_activity <- reactiveVal(as.numeric(Sys.time()))
+  slide <- reactiveVal(1L)
+  presenting <- reactiveVal(FALSE)
+  pinned <- reactiveVal(NULL)
+  slides <- teacher_slides()
+
+  shared <- reactive({ invalidateLater(1000, session); teacher_coordinator$state() })
+  signed_in <- function() lifecycle$alive && isTRUE(isolate(authenticated()))
+  clear_private <- function() {
+    candidate(NULL)
+    presenting(FALSE)
+    pinned(NULL)
+    teacher_coordinator$cancel(owner)
+  }
+  session$onSessionEnded(function() {
+    lifecycle$alive <- FALSE
+    teacher_coordinator$cancel(owner)
+  })
+
+  fail_operation <- function(kind, id) {
+    message <- if (identical(kind, "publish"))
+      "Publication could not be confirmed. Reload the published snapshot before trying again; the student site keeps its last successful deployment."
+    else "The operation could not finish. Check the configured connections and try again; the published snapshot was not replaced."
+    teacher_coordinator$finish(id, message)
+    if (signed_in()) status(message)
+    invisible(NULL)
   }
 
-  refresh_snapshot_input <- function() {
-    req(authenticated())
-    choices <- if (cloud_mode) {
-      if (!nzchar(github_token())) return(invisible(NULL))
-      tryCatch({
-        history <- list_github_snapshots(config_result$value, token = github_token())
-        stats::setNames(history$ref, history$label)
-      }, error = function(error) {
-        status(conditionMessage(error))
-        character()
-      })
-    } else snapshot_choices(project_root)
-    updateSelectInput(session, "snapshot", choices = choices)
+  complete_value <- function(kind, id, value) {
+    # Terminal reconciliation is unconditional and synchronous in the main
+    # promise callback, before any session observer could be destroyed.
+    message <- teacher_finish_public_operation(teacher_coordinator, id, value)
+    if (!is.null(message)) {
+      if (signed_in()) status(message)
+      return(invisible(NULL))
+    }
+    if (!identical(value$type, "prepared")) stop("Unexpected worker result.")
+    state <- teacher_coordinator$state()
+    if (!signed_in() || is.null(state$job) || !identical(state$job$id, id) || isTRUE(state$job$cancelled)) {
+      teacher_coordinator$finish(id, "The pending candidate was cancelled without publication.")
+      if (signed_in()) status("The pending candidate was cancelled without publication.")
+      return(invisible(NULL))
+    }
+    candidate(value$candidate)
+    if (isTRUE(value$candidate$demonstration) || identical(kind, "demo")) {
+      teacher_coordinator$finish(id, "Private demonstration ready. The student site is unchanged.")
+      status("Private demonstration ready in Diagnostics. It cannot be published from this panel.")
+      return(invisible(NULL))
+    }
+    # Main-process auth is rechecked after computation. The permission remains
+    # revocable during the following network operation and expires on its own.
+    if (!teacher_coordinator$may_publish(id, owner, authenticated())) {
+      teacher_coordinator$finish(id, "The candidate is no longer authorised for publication.")
+      return(invisible(NULL))
+    }
+    permission <- tryCatch(teacher_coordinator$grant(id, owner, authenticated(),
+      expires_at = last_activity() + 899), error = function(error) NULL)
+    if (is.null(permission)) {
+      teacher_coordinator$finish(id, "Publication permission expired before the write.")
+      status("Publication permission expired. Sign in again before updating.")
+      return(invisible(NULL))
+    }
+    phase("publish")
+    status("The protected candidate is ready. Publishing it and checking the student site.")
+    # ExtendedTask queues this invocation until its current promise settles.
+    # No reactive observer is needed to hand off the still-locked operation.
+    operation$invoke("publish", config_result$value, id,
+      results = value$candidate$results, permission = permission)
+    invisible(NULL)
   }
-  observeEvent(authenticated(), {
-    if (isTRUE(authenticated())) refresh_snapshot_input() else {
-      candidate(NULL)
-      status("No publication has been attempted in this session.")
-      updateTextInput(session, "session_code", value = "")
-    }
-  }, ignoreNULL = FALSE)
 
-  observeEvent(input$data_source, {
-    req(authenticated())
-    candidate(NULL)
-    updateCheckboxInput(session, "confirm", value = FALSE)
-    is_demo <- identical(input$data_source, "demo")
-    updateTextInput(session, "session_code", value = if (is_demo) demo_session_code() else "")
-    updateActionButton(session, "download", label = if (is_demo) "Load demonstration" else "Download once from Qualtrics")
-  })
-
-  output$configuration_status <- renderUI({
-    req(authenticated())
-    if (!is.null(config_result$error)) {
-      div(class = "alert alert-danger", config_result$error)
-    } else {
-      config <- config_result$value
-      pages <- config$publication$pages_base_url
-      div(
-        class = "status-box",
-        strong("Configuration loaded. "),
-        if (nzchar(pages)) tags$a("Open student dashboard", href = pages, target = "_blank", rel = "noopener") else "GitHub Pages URL still needs to be set in config/config.yml.",
-        if (cloud_mode && !all(nzchar(Sys.getenv(c("QUALTRICS_API_KEY", "QUALTRICS_BASE_URL"))))) {
-          p("La conexión con los datos reales está pendiente de configuración. Puedes usar la demostración.")
-        },
-        if (cloud_mode && !nzchar(Sys.getenv("GITHUB_PUBLICATION_TOKEN"))) {
-          p("La publicación de resultados está pendiente de configurar en el servidor.")
-        }
-      )
-    }
-  })
-
-  observeEvent(input$download, {
-    req(authenticated(), config_result$value)
-    code <- trimws(input$session_code)
-    if (!nzchar(code)) {
-      showNotification("Enter a class session code first.", type = "error")
-      return()
-    }
-    candidate(NULL)
-    is_demo <- identical(input$data_source, "demo")
-    status(if (is_demo) "Preparing explicitly synthetic demonstration data …" else "Downloading both surveys and validating the selected class session …")
-    result <- tryCatch(
-      withProgress(message = if (is_demo) "Loading synthetic demonstration" else "Downloading from Qualtrics once", value = 0.1, {
-        value <- if (is_demo) {
-          prepare_demo_candidate(config_result$value, code)
-        } else {
-          downloaded <- download_surveys_once(config_result$value)
-          incProgress(0.45, detail = "Normalising and classifying responses")
-          prepare_publication_candidate(downloaded, code, config_result$value)
-        }
-        incProgress(0.45, detail = "Applying privacy suppression")
-        value
-      }),
-      error = function(error) error
-    )
-    if (inherits(result, "error")) {
-      status(paste("Download or validation failed:\n", conditionMessage(result)))
-      showNotification(conditionMessage(result), type = "error", duration = NULL)
-    } else {
-      candidate(result)
-      updateCheckboxInput(session, "confirm", value = FALSE)
-      status(paste("Candidate", result$results$metadata$publication_id, "is ready for review."))
-      showNotification("Candidate ready. Review the diagnostics and public preview.", type = "message")
-    }
-  })
-
-  output$candidate_summary <- renderUI({
-    req(authenticated())
-    value <- candidate()
-    if (is.null(value)) return(div(class = "alert alert-secondary", "No candidate loaded."))
-    cells <- value$results$cells
-    div(
-      class = "alert alert-info",
-      if (identical(value$results$metadata$data_mode, "demonstration")) tags$p(tags$strong("DEMONSTRATION — synthetic data, not real survey results.")),
-      tags$b(value$results$metadata$publication_id), tags$br(),
-      paste(sum(!cells$suppressed), "visible behaviour cells and", sum(cells$suppressed), "suppressed cells."),
-      tags$br(),
-      "Indicators overlap by design; their percentages are not a mutually exclusive distribution."
-    )
-  })
-
-  output$diagnostics <- renderTable({
-    req(authenticated(), candidate())
-    format_diagnostics(candidate())
-  }, striped = TRUE, bordered = FALSE, spacing = "s")
-
-  output$public_preview <- renderTable({
-    req(authenticated(), candidate())
-    preview <- candidate()$results$cells
-    preview$count <- ifelse(preview$suppressed, "Suppressed", as.character(preview$count))
-    preview$percentage <- ifelse(preview$suppressed, "Suppressed", paste0(preview$percentage, "%"))
-    preview[c("scope", "country", "gender", "behaviour", "count", "percentage", "denominator_type")]
-  }, striped = TRUE, bordered = FALSE, spacing = "xs")
-
-  perform_publication <- function(results, session_code = character(), push = TRUE) {
-    req(authenticated())
-    if (!isTRUE(input$confirm)) {
-      showNotification("Confirm that you reviewed the candidate first.", type = "warning")
-      return(NULL)
-    }
-    label <- if (push) "Publishing and waiting for GitHub Pages" else "Running local validation"
-    status(paste0(label, " …"))
-    result <- tryCatch(
-      withProgress(message = label, value = 0.05, {
-        if (cloud_mode && push) publish_results_github(
-          results, config_result$value, secrets = session_code, token = github_token(), verify = TRUE
-        ) else if (cloud_mode) {
-          validate_github_public_results(results, secrets = session_code)
-          list(publication_id = results$metadata$publication_id, scanned_files = 2L,
-               deployment = list(message = "Aggregate data validated. Tests, rendering and artifact scanning run on GitHub when published."))
-        } else publish_results(
-          results,
-          config_result$value,
-          secrets = session_code,
-          push = push,
-          verify = push
-        )
-      }),
-      error = function(error) error
-    )
-    if (inherits(result, "error")) {
-      status(paste(label, "failed:\n", conditionMessage(result)))
-      showNotification(conditionMessage(result), type = "error", duration = NULL)
-      return(NULL)
-    }
-    status(paste(
-      "Publication:", result$publication_id,
-      "\nPrivacy scan:", result$scanned_files, "public files checked",
-      "\nDeployment:", result$deployment$message
+  operation <- shiny::ExtendedTask$new(function(kind, config, id, results = NULL, permission = NULL) {
+    promise <- promises::future_promise({
+      if (.Platform$OS.type == "windows" && !isTRUE(l10n_info()[["UTF-8"]])) {
+        invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
+      }
+      source(file.path(config$project_root, "R", "load_all.R"), local = TRUE, encoding = "UTF-8")
+      source_project_modules(config$project_root)
+      if (!exists("teacher_operation_worker", mode = "function")) source(file.path(config$project_root, "R", "teacher_coordinator.R"), encoding = "UTF-8")
+      teacher_operation_worker(kind, config, results, permission)
+    }, globals = list(kind = kind, config = config, results = results, permission = permission), seed = TRUE)
+    shiny::withReactiveDomain(NULL, promises::then(promise,
+      onFulfilled = function(value) {
+        tryCatch(shiny::isolate(complete_value(kind, id, value)),
+          error = function(error) fail_operation(kind, id))
+        list(type = "settled")
+      },
+      onRejected = function(error) {
+        fail_operation(kind, id)
+        list(type = "failed")
+      }
     ))
-    refresh_snapshot_input()
-    showNotification(if (push) "Publication workflow completed." else "Local validation completed.", type = "message")
-    result
+  })
+
+  start_operation <- function(kind) {
+    req(authenticated())
+    if (is.null(config_result$value)) {
+      status(config_result$error)
+      return(invisible(FALSE))
+    }
+    id <- tryCatch(teacher_coordinator$begin(owner, kind, authenticated()), error = function(error) error)
+    if (inherits(id, "error")) {
+      status(conditionMessage(id))
+      return(invisible(FALSE))
+    }
+    operation_id(id)
+    phase(kind)
+    if (kind %in% c("update", "demo")) candidate(NULL)
+    status(if (kind == "update") "Downloading both surveys and preparing the latest group."
+      else if (kind == "demo") "Preparing a synthetic preview. This cannot publish to the student site."
+      else "Reading the current published snapshot.")
+    operation$invoke(kind, config_result$value, id)
+    invisible(TRUE)
   }
 
-  observeEvent(input$validate_local, {
-    req(authenticated(), candidate(), config_result$value)
-    perform_publication(candidate()$results, input$session_code, push = FALSE)
+  observeEvent(authenticated(), {
+    if (isTRUE(authenticated())) {
+      last_activity(as.numeric(Sys.time()))
+      if (!teacher_coordinator$state()$busy) start_operation("refresh")
+    } else clear_private()
+  }, ignoreNULL = FALSE)
+  observe({
+    invalidateLater(1000, session)
+    if (!isTRUE(authenticated())) clear_private()
+  })
+  observe({
+    reactiveValuesToList(input)
+    if (isTRUE(authenticated())) last_activity(as.numeric(Sys.time()))
+  }, priority = -1100)
+
+  observeEvent(input$update_publish, start_operation("update"))
+  observeEvent(input$refresh_latest, start_operation("refresh"))
+  observeEvent(input$load_demo, start_operation("demo"))
+  observeEvent(input$cancel_operation, {
+    req(authenticated())
+    if (teacher_coordinator$cancel(owner)) status("Cancellation requested. An already completed commit will still be reconciled.")
+  }, priority = 1500)
+
+  observe({
+    req(authenticated())
+    state <- shared()
+    session$sendCustomMessage("teacher-controls", list(
+      update_publish = !state$busy && state$cooldown_remaining == 0L && !is.null(config_result$value),
+      refresh_latest = !state$busy, load_demo = !state$busy,
+      cancel_operation = state$busy && identical(state$job$owner, owner) && !isTRUE(state$job$cancelled)))
   })
 
-  observeEvent(input$publish, {
-    req(authenticated(), candidate(), config_result$value)
-    perform_publication(candidate()$results, input$session_code, push = TRUE)
-  })
-
-  observeEvent(input$refresh_snapshots, refresh_snapshot_input())
-
-  observeEvent(input$rollback, {
+  output$student_link <- renderUI({
     req(authenticated(), config_result$value)
-    if (!nzchar(input$snapshot)) {
-      showNotification("Select a snapshot first.", type = "warning")
-      return()
-    }
-    rolled_back <- tryCatch(
-      prepare_rollback(if (cloud_mode) read_github_snapshot(input$snapshot, config_result$value, token = github_token()) else read_public_snapshot(input$snapshot)),
-      error = function(error) error
-    )
-    if (inherits(rolled_back, "error")) {
-      showNotification(conditionMessage(rolled_back), type = "error")
-      return()
-    }
-    perform_publication(rolled_back, push = TRUE)
+    tags$a(class = "btn btn-outline-primary", href = config_result$value$publication$pages_base_url,
+      target = "_blank", rel = "noopener", "Open student dashboard")
   })
+  output$connection_status <- renderUI({
+    req(authenticated())
+    if (!is.null(config_result$error)) return(div(class = "research-notice", config_result$error))
+    missing <- c(if (!all(nzchar(Sys.getenv(c("QUALTRICS_API_KEY", "QUALTRICS_BASE_URL"))))) "Qualtrics connection",
+      if (!nzchar(Sys.getenv("GITHUB_PUBLICATION_TOKEN"))) "publication connection")
+    if (length(missing)) div(class = "research-notice", paste("Server setup required:", paste(missing, collapse = " and ")))
+      else p("Private connections are configured on the server. No credentials are requested in this panel.")
+  })
+  output$operation_status <- renderText({ req(authenticated()); state <- shared(); if (state$busy) state$job$phase else status() })
+  output$cooldown_status <- renderText({
+    req(authenticated()); remaining <- shared()$cooldown_remaining
+    if (remaining > 0L) paste("Next real update in", remaining, "seconds.") else "The shared update cooldown has ended."
+  })
+  output$latest_summary <- renderUI({ req(authenticated()); teacher_snapshot_summary(shared()$latest) })
+  output$latest_bars <- renderUI({ req(authenticated()); teacher_group_bars(shared()$latest) })
+  output$latest_behaviours <- renderTable({ req(authenticated()); teacher_table_preview(shared()$latest, "cells") }, striped = TRUE)
+  output$latest_matrix <- renderTable({ req(authenticated()); teacher_table_preview(shared()$latest, "matrix_cells") }, striped = TRUE)
+  output$candidate_summary <- renderUI({
+    req(authenticated()); value <- candidate()
+    if (is.null(value)) return(p("No candidate has been prepared in this session."))
+    tagList(if (isTRUE(value$demonstration)) div(class = "research-notice", "Synthetic demonstration. Private preview only; not published."),
+      teacher_snapshot_summary(value$results, heading = "Prepared candidate"))
+  })
+  output$quality_diagnostics <- renderTable({ req(authenticated(), candidate()); candidate()$diagnostics }, striped = TRUE)
+  output$selection_diagnostics <- renderTable({
+    req(authenticated(), candidate()); selection <- candidate()$selection
+    if (is.null(selection)) return(NULL)
+    data.frame(Selection = names(selection), Value = vapply(selection, function(value) paste(value, collapse = ", "), character(1)))
+  }, striped = TRUE)
+  output$candidate_behaviours <- renderTable({ req(authenticated(), candidate()); teacher_table_preview(candidate()$results, "cells") }, striped = TRUE)
+  output$candidate_matrix <- renderTable({ req(authenticated(), candidate()); teacher_table_preview(candidate()$results, "matrix_cells") }, striped = TRUE)
 
-  output$publication_status <- renderText({ req(authenticated()); status() })
+  move_slide <- function(direction) { req(authenticated()); slide(max(1L, min(length(slides), slide() + direction))) }
+  observeEvent(input$slide_previous, move_slide(-1L))
+  observeEvent(input$slide_next, move_slide(1L))
+  observeEvent(input$slide_key, { req(authenticated()); if (input$slide_key$direction %in% c(-1, 1)) move_slide(input$slide_key$direction) })
+  observeEvent(input$slide_jump, { req(authenticated()); if (input$slide_jump$slide %in% c(1, 12)) slide(input$slide_jump$slide) })
+  observeEvent(input$presentation_started, {
+    req(authenticated()); if (!presenting()) pinned(teacher_coordinator$state()$latest); presenting(TRUE)
+  })
+  observeEvent(input$presentation_exited, { req(authenticated()); presenting(FALSE); pinned(NULL) })
+  observeEvent(input$stop_presentation, {
+    req(authenticated()); presenting(FALSE); pinned(NULL); session$sendCustomMessage("teacher-exit-fullscreen", list())
+  })
+  projected <- reactive({ req(authenticated()); if (presenting()) pinned() else shared()$latest })
+  output$slide_position <- renderUI({ req(authenticated()); span(paste("Slide", slide(), "of", length(slides))) })
+  output$projection_slide <- renderUI({
+    req(authenticated()); item <- slides[[slide()]]
+    tagList(h2(item$title), if (slide() == 9L) tagList(teacher_snapshot_summary(projected()), teacher_group_bars(projected())) else item$content)
+  })
+  output$presenter_notes <- renderText({ req(authenticated()); slides[[slide()]]$notes })
+  output$presentation_snapshot <- renderText({
+    req(authenticated()); value <- projected()
+    paste(if (presenting()) "Pinned publication:" else "Publication:",
+      if (is.null(value)) "none available" else value$metadata$publication_id)
+  })
 }
 
 shinyApp(ui, server)

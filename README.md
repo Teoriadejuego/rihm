@@ -1,123 +1,126 @@
-# Mini-dictator classroom dashboard
+# RIHM Decision Lab
 
-Live dashboard: [teoriadejuego.github.io/rihm](https://teoriadejuego.github.io/rihm/).
+[Researcher panel](https://teoria-juegos.shinyapps.io/rihm-profesor/) ·
+[Student dashboard](https://teoriadejuego.github.io/rihm/)
 
-This project replaces a shared Shiny application with two separate components:
+RIHM has two independent parts. The private Shiny researcher panel explains the
+experiment, provides twelve teaching slides and updates the public aggregates. The
+JavaScript student dashboard explores and compares the last published snapshot.
+Teachers and students need only a browser.
 
-- a password-protected Shiny publisher used only by the teacher, hosted on shinyapps.io or run locally; and
-- a static Quarto dashboard that can be opened simultaneously by the whole class, regardless of whether a particular group is smaller or larger than the original estimate.
+## Researcher workflow
 
-In local mode, Qualtrics credentials, session codes and row-level survey data remain on the teacher's computer. In hosted mode, the private teacher session processes them on shinyapps.io. GitHub receives only privacy-protected aggregate JSON and static site source.
+1. Sign in with the private teacher account.
+2. Open **Project** for the protocol or **Teach** for slides and presenter notes.
+3. Open **Latest group** to inspect the most recent snapshot.
+4. In **Update**, choose **Update and publish** after the shared three-minute cooldown.
+5. Review acquisition/publication status and the private **Diagnostics**.
 
-## Online teacher panel
+The update downloads both configured Qualtrics surveys once, validates them, applies
+classification and suppression, and publishes the aggregate JSON automatically.
+Unchanged public content creates no duplicate publication. Failures preserve the
+last valid public snapshot. A server restart starts a conservative three-minute wait.
 
-The hosted panel does not require R on the teacher's computer. Sign in with the private teacher credentials; the student dashboard remains public and independent of Shiny.
+**Load private demonstration** is an isolated synthetic preview. It does not require
+Qualtrics or replace the public snapshot. Presentation mode pins the selected public
+snapshot so an update cannot change the results midway through a slide explanation.
 
-For a test, select **Demonstration: synthetic responses**, enter `DEMO-RIHM`, then **Load demonstration**. Review the aggregate cells, confirm the review, and use **Validate aggregate data**. This does not publish or replace the student snapshot.
+Credentials are read from private server configuration; there are no API-key inputs
+in the page. Login expires after fifteen idle minutes. Use one Shiny worker: the
+coordinator and cooldown are shared by sessions within that process.
 
-The Qualtrics API key, data-center hostname and two survey IDs are configured privately on the server at deployment. Publication uses a GitHub fine-grained personal access token restricted to this repository with **Contents: Read and write**. These settings are read only from the server environment: no credential fields or values are sent to the browser. Sign in and enter the class session code to work; no API keys need to be entered for each session. Never paste credentials into an issue, commit, or the public student page.
+## What “latest group” means
 
-The hosted publisher commits only the two public JSON files through the GitHub API. GitHub Actions then runs tests, renders, scans and deploys the student dashboard. Snapshot history is read from GitHub commits; no durable server filesystem is required. A failed deployment leaves the last successful Pages version online. Login expires after 15 minutes of inactivity; five failed logins lock the R process for five minutes. Use one worker for the teacher app.
+Let **T** be the maximum valid EndDate in the normalized, deduplicated class database.
+The group includes responses in **(T − 3600 seconds, T]**, regardless of how old T is.
+The lower boundary is excluded and upper-boundary ties are included. Determine T
+before excluding incomplete or non-binary answers. Do not fall back to an older
+group if the selected group is unusable. RecordedDate and session codes do not select it.
 
-For maintainers: copy `config/hosting.Renviron.example` to ignored `config/hosting.Renviron`, configure a unique teacher password of at least 20 characters, the survey IDs, `QUALTRICS_API_KEY`, `QUALTRICS_BASE_URL` and `GITHUB_PUBLICATION_TOKEN`, then run `Rscript scripts/prepare_hosted_bundle.R`. Deploy the printed bundle directory with `rsconnect::deployApp(..., appName = "rihm-profesor", account = "teoria-juegos", server = "shinyapps.io")`. The bundle includes private `hosting.env`; keep it outside public Git. No raw data, Git working tree, local `.Renviron`, or local `config.yml` is bundled. Updating a server credential requires a fresh private bundle and redeployment.
+Qualtrics exports are requested in UTC. The reference uses all valid mapped
+international responses. Response interval, acquisition time and publication time
+are displayed separately. Students check for updates every sixty seconds while the
+page is visible and when returning to it; filtering then runs entirely in their browser.
 
-## First-time setup
+## Classification and privacy
 
-1. Install R 4.3 or later, Quarto, Git and Git Credential Manager.
-2. Run `Rscript scripts/install_dependencies.R`.
-3. Copy `.Renviron.example` to `.Renviron` and add the Qualtrics API key and base URL.
-4. Review the ignored local file `config/config.yml`. The two survey IDs from the original application are already entered locally.
-5. Create an empty GitHub repository, enable **Settings → Pages → Source: GitHub Actions**, then connect and push the existing local `main` branch:
+The original Selfish, Spiteful, Egalitarian, dp_efficiency, Altruist, Ineqseek,
+Antisocial and Inconsistent rules are retained. Altruist, Egalitarian, Selfish and
+Antisocial overlap and use consistent responses as their denominator. Inconsistent
+uses complete binary responses. dp_efficiency remains tested but is not plotted
+separately because its current rule equals Altruist.
 
-   ```powershell
-   git remote add origin https://github.com/ACCOUNT/REPOSITORY.git
-   git push -u origin main
-   ```
+Counts, denominators and complementary counts below five are suppressed. Secondary
+and cross-table suppression protect related cells. Suppressed numeric fields are
+null, never hidden values. Partial and non-binary records appear only in private
+diagnostics. GitHub receives aggregate JSON and static source, not row-level responses.
 
-6. Set `publication.pages_base_url` in `config/config.yml` to the Pages URL. Authenticate Git once through Git Credential Manager.
+These safeguards apply to each snapshot. They do not guarantee anonymity against
+comparisons between historical releases; Git retains old public versions.
 
-The local `config/config.yml`, `.Renviron`, raw downloads, staging files and snapshots are ignored by Git.
+## Developer setup and verification
 
-## Teacher workflow
-
-Start the local panel from the project root:
-
-```powershell
-Rscript scripts/start_teacher.R
-```
-
-The teacher panel is available at `http://127.0.0.1:8124/` on the teacher's computer.
-
-Then:
-
-1. Enter the class session code and click **Download once from Qualtrics**.
-2. Review the private diagnostics and the exact aggregate cells that may become public.
-3. Confirm the review and click **Validate and render locally** if a dry run is wanted.
-4. Click **Publish to GitHub Pages**. The panel tests, renders and scans the candidate, commits only the two public JSON files, pushes them, and checks the published manifest.
-5. If necessary, select a local snapshot and republish it. Rollback creates a new commit and does not rewrite Git history.
-
-The initial source-code commit is already present locally. After the first remote push, classroom-result publications are handled by the panel.
-
-## Try the demonstration without Qualtrics
-
-In the local teacher panel, select **Demonstration: synthetic responses**, use code
-`DEMO-RIHM`, and click **Load demonstration**. This runs generated responses through
-the same normalisation, classification and privacy checks as a real download.
-The preview includes both survey schemas, six reference countries, gender filters,
-and examples of invalid and duplicate responses in the private diagnostics.
-
-After reviewing the preview, the usual validation and publication buttons work.
-A published demonstration is explicitly labelled as synthetic on the student page;
-it replaces the current public snapshot. It requires no Qualtrics credentials.
-To return to real survey data, select **Qualtrics: real responses**, enter a real
-session code and download and publish that candidate.
-
-For a separate local student preview without changing the public snapshot, run
-`Rscript scripts/preview_demo.R`, then serve `staging/demo-preview/student/_site`
-with a local HTTP server. This preview never pushes to GitHub.
-
-## Classification and denominators
-
-The project deliberately reproduces the original rules for `Selfish`, `Spiteful`, `Egalitarian`, `dp_efficiency`, `Altruist`, `Ineqseek`, `Antisocial` and `Inconsistent`.
-
-- `Altruist`, `Egalitarian`, `Selfish` and `Antisocial` are overlapping indicators. Their percentages are calculated over consistent responses and may sum to more than 100%.
-- `Inconsistent` is calculated over complete binary responses.
-- `dp_efficiency` is retained and regression-tested but is not displayed because the current rule is identical to `Altruist`.
-- Partial and non-binary responses are excluded from public calculations and reported only in the teacher's diagnostics.
-
-## Privacy model
-
-Every public cell is suppressed when its count, denominator or complementary count is below 5. Secondary suppression hides an additional related cell when a gender or country total would otherwise reveal the protected value. Suppressed cells contain `null`, not the underlying number.
-
-A final cross-table check adds suppression when protected small values can be reconstructed by linear combinations of the published behaviour cells, matrix cells and sample sizes, including combinations across filters.
-
-`student/data/public_results.json` contains only publication metadata, aggregate behaviour cells and aggregate compassion × envy matrix cells. The pre-publish scan rejects row-level identifiers, session fields and supplied session-code values.
-
-## Verification commands
+Install R 4.3 or newer, Node.js 24, npm and Git. Quarto is no longer required.
 
 ```powershell
+Rscript scripts/install_dependencies.R
+npm ci
 Rscript scripts/run_tests.R
+npm test
 Rscript scripts/render_site.R
 Rscript scripts/scan_public.R
+npx playwright install chromium
+npm run test:e2e
 ```
 
-To test a representative concurrent class size, serve `student/_site` locally in one terminal and pass the desired number of simulated connections to the checker in another:
+`package-lock.json` pins JavaScript versions. `renv.lock` records the R dependency
+graph; use `renv::restore()` in an isolated library to reproduce it. To update that
+record intentionally, run `Rscript scripts/snapshot_dependencies.R`.
+
+Local development uses ignored `.Renviron` and `config/config.yml`. Hosted deployment
+uses ignored `config/hosting.Renviron`; start from the corresponding example file.
+The private hosted bundle is created by `Rscript scripts/prepare_hosted_bundle.R`.
+It contains `hosting.env`, which must never enter Git or student artifacts.
+
+For local UI development:
 
 ```powershell
-python -m http.server 8000 --directory student/_site
-Rscript scripts/check_concurrent_connections.R http://127.0.0.1:8000/ 60
+Rscript -e "shiny::runApp('admin', launch.browser = TRUE)"
+npm run dev
 ```
 
-The final argument is only a test parameter; use a smaller or larger value to match the expected class. It is not an application limit.
+The local teacher mode is for development on the owner's computer. The hosted entry
+point enables server-side authentication. See [operations](docs/operations.md) for
+deployment, credential rotation and recovery.
 
-The static dashboard makes no request to Qualtrics or Shiny. After its aggregate JSON is loaded, filtering and chart updates run entirely in the browser.
+To check static delivery with representative class sizes, serve the built site:
 
-## Public data contract
+```powershell
+python scripts/serve_student_site.py --port 8000
+```
 
-`public_results.json` has schema version `1.0.0`:
+Then in a second terminal:
 
-- `metadata`: publication ID, UTC generation/source times, suppression threshold and classification note.
-- `cells`: scope, country, gender, behaviour, count, denominator, percentage, denominator type, complete/consistent sample sizes and suppression flag.
-- `matrix_cells`: scope, country, gender, compassion level, envy level, count, denominator, percentage and suppression flag.
+```powershell
+Rscript scripts/check_concurrent_connections.R http://127.0.0.1:8000/ 30
+Rscript scripts/check_concurrent_connections.R http://127.0.0.1:8000/ 60
+Rscript scripts/check_concurrent_connections.R http://127.0.0.1:8000/ 200
+```
 
-`public_manifest.json` exposes only the schema version, publication ID and generation time so the local panel can confirm that GitHub Pages serves the requested snapshot.
+Each simulated client requests the HTML, referenced JavaScript/CSS, manifest and
+results. This checks static delivery, not a guaranteed application capacity limit.
+
+## Public contract
+
+`student/data/public_results.json` schema 2.0.0 contains metadata, behaviour cells
+and compassion × envy matrix cells. Metadata includes the historical response
+interval, selection rule, separate acquisition times, rule versions and semantic
+fingerprint. `public_manifest.json` includes the publication ID and SHA256 of the
+exact results bytes. Both files are committed together.
+
+The reader accepts legacy 1.0.0, including its initial empty snapshot, without
+inventing a response interval. Invalid or mismatched new content never replaces
+the last valid browser view.
+
+See the [approved plan](docs/rebuild-plan.md), [twenty specialist prompts](docs/senior-prompts/README.md)
+and [implementation evidence](docs/implementation-status.md).

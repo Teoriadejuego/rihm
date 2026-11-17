@@ -25,7 +25,44 @@ coalesce_existing <- function(data, candidates) {
   suppressWarnings(as.numeric(as.character(values)))
 }
 
-normalise_survey <- function(raw, scope, locations, session_code_column = "session_password") {
+# Qualtrics exports are requested in UTC. Offset-free exported timestamps are
+# therefore UTC; explicit offsets are honoured and malformed calendar dates are
+# excluded rather than repaired. Never infer a timezone from the host computer.
+parse_qualtrics_end_date <- function(values) {
+  if (inherits(values, "POSIXt")) return(as.POSIXct(as.numeric(values), origin = "1970-01-01", tz = "UTC"))
+  values <- trimws(as.character(values))
+  parsed <- rep(NA_real_, length(values))
+  pattern <- "^([0-9]{4}-[0-9]{2}-[0-9]{2})[T ]([0-9]{2}:[0-9]{2}:[0-9]{2})([.][0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})?$"
+  for (i in which(!is.na(values) & nzchar(values))) {
+    parts <- regmatches(values[[i]], regexec(pattern, values[[i]]))[[1L]]
+    if (!length(parts)) next
+    calendar <- paste(parts[[2L]], parts[[3L]])
+    instant <- suppressWarnings(as.POSIXct(strptime(calendar, "%Y-%m-%d %H:%M:%S", tz = "UTC")))
+    if (is.na(instant) || !identical(format(instant, "%Y-%m-%d %H:%M:%S", tz = "UTC"), calendar)) next
+    fraction <- if (nzchar(parts[[4L]])) as.numeric(parts[[4L]]) else 0
+    zone <- parts[[5L]]
+    offset <- 0
+    if (nzchar(zone) && zone != "Z") {
+      compact <- gsub(":", "", zone, fixed = TRUE)
+      hours <- as.integer(substr(compact, 2L, 3L))
+      minutes <- as.integer(substr(compact, 4L, 5L))
+      if (hours > 14L || minutes > 59L || (hours == 14L && minutes != 0L)) next
+      offset <- (hours * 3600 + minutes * 60) * if (startsWith(zone, "-")) -1 else 1
+    }
+    parsed[[i]] <- as.numeric(instant) + fraction - offset
+  }
+  as.POSIXct(parsed, origin = "1970-01-01", tz = "UTC")
+}
+
+format_utc_timestamp <- function(value) {
+  instant <- if (inherits(value, "POSIXt")) value else parse_qualtrics_end_date(value)
+  rendered <- format(instant, "%Y-%m-%dT%H:%M:%OS6", tz = "UTC", usetz = FALSE)
+  rendered <- sub("[.]?0+$", "", rendered)
+  ifelse(is.na(instant), NA_character_, paste0(rendered, "Z"))
+}
+
+normalise_survey <- function(raw, scope, locations, session_code_column = "session_password",
+                             allow_recorded_date = TRUE) {
   if (!is.data.frame(raw) || !nrow(raw)) {
     stop("The ", scope, " survey returned no rows.", call. = FALSE)
   }
@@ -56,7 +93,9 @@ normalise_survey <- function(raw, scope, locations, session_code_column = "sessi
   output$gender_code <- suppressWarnings(as.numeric(as.character(first_existing(raw, c("gender", "Gender"), required = FALSE))))
   output$uni <- suppressWarnings(as.numeric(as.character(first_existing(raw, c("uni", "Uni"), required = FALSE))))
   output$response_id <- as.character(first_existing(raw, c("ResponseId", "responseId", "response_id"), required = FALSE))
-  output$end_date <- as.character(first_existing(raw, c("EndDate", "endDate", "RecordedDate"), required = FALSE))
+  end_columns <- c("EndDate", "endDate", if (isTRUE(allow_recorded_date)) "RecordedDate")
+  end_date <- first_existing(raw, end_columns, required = FALSE)
+  output$end_date <- if (inherits(end_date, "POSIXt")) format_utc_timestamp(end_date) else as.character(end_date)
   output$finished <- as.character(first_existing(raw, c("Finished", "finished"), required = FALSE))
   output$session_code <- if (session_code_column %in% names(raw)) {
     trimws(as.character(raw[[session_code_column]]))

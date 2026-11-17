@@ -11,3 +11,10 @@ snapshots/
 *.Rproj.user/
 .Rhistory
 .RData
+node_modules/
+test-results/
+playwright-report/
+tests/e2e/artifacts/
+coverage/
+renv/library/
+renv/staging/

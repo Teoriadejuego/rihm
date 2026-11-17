@@ -2,11 +2,13 @@ testthat::test_that("hosted bundles use a closed whitelist and preserve the call
   bundle_module <- new.env(parent = globalenv())
   sys.source(file.path("..", "..", "scripts", "prepare_hosted_bundle.R"), envir = bundle_module)
   root <- tempfile("bundle-fixture-")
-  for (directory in c("admin", "R", "config", "snapshots", "staging", "student")) {
+  for (directory in c("admin", "admin/modules", "admin/www", "R", "config", "snapshots", "staging", "student")) {
     dir.create(file.path(root, directory), recursive = TRUE)
   }
-  for (path in c("app.R", "admin/app.R", "R/load_all.R", "R/helper.R", "config/reference_locations.csv",
-    "config/config.yml", ".Renviron", "snapshots/private.json", "student/private.json", "R/notes.txt")) {
+  ui_files <- c("admin/modules/content.R", "admin/modules/layout.R", "admin/www/research.css", "admin/www/research.js")
+  for (path in c("app.R", "admin/app.R", ui_files, "R/load_all.R", "R/helper.R", "config/reference_locations.csv",
+    "config/config.yml", ".Renviron", "snapshots/private.json", "student/private.json", "R/notes.txt",
+    "admin/www/private.env", "admin/modules/private-notes.txt", "admin/www/private.html")) {
     writeLines("fixture", file.path(root, path))
   }
   writeLines(c("Package: fixture", "Imports: shiny, httr2"), file.path(root, "DESCRIPTION"))
@@ -21,7 +23,7 @@ testthat::test_that("hosted bundles use a closed whitelist and preserve the call
   testthat::expect_identical(Sys.getenv("TEACHER_PASSWORD"), "ambient-value")
   testthat::expect_identical(basename(bundle), "teacher-hosted-20260924T120000Z")
   testthat::expect_setequal(list.files(bundle, recursive = TRUE, all.files = TRUE, no.. = TRUE),
-    c("app.R", "admin/app.R", "R/load_all.R", "R/helper.R", "DESCRIPTION", "config/reference_locations.csv", "hosting.env"))
+    c("app.R", "admin/app.R", ui_files, "R/load_all.R", "R/helper.R", "DESCRIPTION", "config/reference_locations.csv", "hosting.env"))
   testthat::expect_identical(readBin(file.path(bundle, "hosting.env"), "raw", 10000), readBin(hosting, "raw", 10000))
   second <- bundle_module$prepare_hosted_bundle(root, stamp)
   testthat::expect_identical(basename(second), "teacher-hosted-20260924T120000Z-2")

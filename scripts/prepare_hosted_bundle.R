@@ -58,7 +58,9 @@ prepare_hosted_bundle <- function(project_root = ".", timestamp = Sys.time()) {
   modules <- list.files(file.path(root, "R"), pattern = "\\.R$", full.names = FALSE,
     recursive = FALSE, all.files = FALSE)
   if (!length(modules)) fail("No R application modules were found.")
-  sources <- c("app.R", "admin/app.R", paste0("R/", sort(modules)), "DESCRIPTION",
+  private_ui <- c("admin/modules/content.R", "admin/modules/layout.R")
+  public_assets <- c("admin/www/research.css", "admin/www/research.js")
+  sources <- c("app.R", "admin/app.R", private_ui, public_assets, paste0("R/", sort(modules)), "DESCRIPTION",
     "config/reference_locations.csv", "config/hosting.Renviron")
   destinations <- sources
   destinations[destinations == "config/hosting.Renviron"] <- "hosting.env"
@@ -84,7 +86,7 @@ prepare_hosted_bundle <- function(project_root = ".", timestamp = Sys.time()) {
     bundle <- file.path(staging, paste0("teacher-hosted-", stamp, "-", suffix))
   }
   if (!dir.create(bundle, mode = "0700", showWarnings = FALSE)) fail("Could not create a fresh hosted bundle.")
-  for (directory in c("admin", "R", "config")) {
+  for (directory in c("admin", "admin/modules", "admin/www", "R", "config")) {
     if (!dir.create(file.path(bundle, directory), mode = "0700", showWarnings = FALSE)) {
       fail("Could not prepare the hosted bundle directories.")
     }

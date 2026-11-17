@@ -29,12 +29,9 @@ run_project_tests <- function(project_root) {
 }
 
 render_student_site <- function(project_root) {
-  if (!nzchar(Sys.which("quarto"))) stop("Quarto is not installed or is not on PATH.", call. = FALSE)
-  run_checked_command(
-    "quarto",
-    c("render", "student/index.qmd", "--output-dir", "_site"),
-    project_root
-  )
+  npm <- Sys.getenv("RIHM_NPM", Sys.which("npm"))
+  if (!nzchar(npm)) stop("Node.js and npm are required to build the student site. Run npm ci first.", call. = FALSE)
+  run_checked_command(npm, c("run", "build"), project_root)
 }
 
 scan_public_files <- function(project_root, secrets = character()) {
@@ -69,6 +66,24 @@ scan_public_files <- function(project_root, secrets = character()) {
   }
   if (length(findings)) {
     stop("Privacy scan failed: ", paste(findings, collapse = "; "), call. = FALSE)
+  }
+  # Validate the actual copied bytes, not a separately re-serialized candidate.
+  for (root in roots[dir.exists(roots)]) {
+    data_dir <- if (basename(root) == "_site") file.path(root, "data") else root
+    result_path <- file.path(data_dir, "public_results.json")
+    manifest_path <- file.path(data_dir, "public_manifest.json")
+    if (!file.exists(result_path) || !file.exists(manifest_path)) {
+      stop("A public artifact is missing its matching result or manifest.", call. = FALSE)
+    }
+    raw <- readBin(result_path, what = "raw", n = file.info(result_path)$size)
+    results <- jsonlite::fromJSON(rawToChar(raw), simplifyVector = TRUE)
+    manifest <- jsonlite::read_json(manifest_path, simplifyVector = TRUE)
+    validate_github_public_results(results, secrets = secrets, allow_unpublished = TRUE)
+    expected <- public_manifest(results, rawToChar(raw))
+    if (!setequal(names(manifest), names(expected)) ||
+        any(!vapply(names(expected), function(name) identical(manifest[[name]], expected[[name]]), logical(1)))) {
+      stop("The public manifest does not match the exact results bytes.", call. = FALSE)
+    }
   }
   invisible(files)
 }

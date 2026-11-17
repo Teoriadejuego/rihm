@@ -71,6 +71,7 @@ fetch_survey_once <- function(survey_id, request = qualtRics::fetch_survey) {
   on.exit(remove_qualtrics_temp_directory(download_directory, temporary_root), add = TRUE)
   request(
     surveyID = survey_id,
+    time_zone = "UTC",
     convert = FALSE,
     label = FALSE,
     verbose = FALSE,
@@ -96,11 +97,15 @@ download_surveys_once <- function(config, credentials = NULL) {
   } else {
     load_qualtrics_environment(config$project_root)
   }
-  download <- function() list(
-      reference = fetch_survey_once(config$qualtrics$reference_survey_id),
-      class = fetch_survey_once(config$qualtrics$class_survey_id),
-      downloaded_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
-    )
+  download <- function() {
+    reference <- fetch_survey_once(config$qualtrics$reference_survey_id)
+    reference_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    class <- fetch_survey_once(config$qualtrics$class_survey_id)
+    class_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    list(reference = reference, class = class, downloaded_at_utc = class_at,
+      reference_source_at_utc = reference_at, class_source_at_utc = class_at,
+      export_time_zone = "UTC")
+  }
   if (supplied || identical(Sys.getenv("TEACHER_HOST_MODE"), "cloud")) {
     tryCatch(suppressMessages(suppressWarnings(download())), error = function(error) {
       stop("Qualtrics download failed. Check the API key, data-center hostname, survey access and network connection.", call. = FALSE)

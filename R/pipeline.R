@@ -18,3 +18,22 @@ prepare_publication_candidate <- function(downloaded, session_code, config) {
   list(results = results, class = class, reference = reference)
 }
 
+prepare_latest_group_candidate <- function(downloaded, config) {
+  locations <- read_reference_locations(config)
+  if (!is.null(downloaded$export_time_zone) && !identical(downloaded$export_time_zone, "UTC")) {
+    stop("Latest-group selection requires a UTC Qualtrics export.", call. = FALSE)
+  }
+  class <- prepare_latest_class_group(downloaded$class, locations,
+    config$qualtrics$session_code_column %||% "session_password")
+  reference <- prepare_survey(downloaded$reference, "international", locations,
+    config$qualtrics$session_code_column %||% "session_password")
+  results <- build_latest_group_results(class$data, reference$data,
+    minimum_cell_size = config$privacy$minimum_cell_size,
+    window_start_utc = class$selection$window_start_utc,
+    window_end_utc = class$selection$window_end_utc,
+    class_source_at_utc = downloaded$class_source_at_utc %||% downloaded$downloaded_at_utc,
+    reference_source_at_utc = downloaded$reference_source_at_utc %||% downloaded$downloaded_at_utc)
+  validate_github_public_results(results)
+  list(results = results, class = class, reference = reference, selection = class$selection)
+}
+
