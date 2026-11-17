@@ -86,3 +86,8 @@ spent more than sixteen minutes downloading system dependencies before applicati
 tests began. The pull-request workflow now installs the locked JavaScript dependencies
 and runs the same JavaScript/browser checks as the Pages build; its obsolete Quarto
 setup was removed.
+
+Final source release `3d4146d` passed all checks and deployment in
+[GitHub Actions](https://github.com/Teoriadejuego/rihm/actions/runs/44202594343).
+The superseded Ubuntu 26.04 run was cancelled after the replacement was queued;
+it did not replace the valid public publication.
