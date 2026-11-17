@@ -3,6 +3,10 @@ name: Validate and deploy classroom dashboard
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE'
   workflow_dispatch:
 
 permissions:

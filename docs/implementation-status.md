@@ -9,7 +9,7 @@ Verification date: 2026-11-18 (Europe/Madrid).
 | Contract and privacy | R regression suite, exact-byte manifest scan, suppression and strict-field validation pass |
 | Researcher coordination | Tests cover shared cooldown, startup wait, cancellation, disconnect cleanup, asynchronous work and pinned presentation |
 | Published versus committed | Researcher reads and verifies the actual Pages files; pending Git commits do not replace the confirmed view |
-| Student reader | 29 unit tests pass, including v1/v2 parsing and refresh integrity |
+| JavaScript reader and teacher controls | 34 unit tests pass, including v1/v2 parsing, refresh integrity and Shiny control lifecycle |
 | Student browser flows | 8 Playwright E2E tests pass on the compiled site under `/rihm/` |
 | Accessibility | Automated axe checks pass at desktop/mobile sizes; visual inspection completed, not a full human accessibility audit |
 | Researcher browser | Real private login, five sections, all twelve slides, synthetic preview, hidden credential inputs and logout checked |
@@ -52,5 +52,11 @@ not guarantee anonymity across successive public versions. Public history persis
 
 ## Release verification
 
-Source and hosting deployment verification will be recorded after the checked release
-is published. Deterministic test fixtures have not replaced the public JSON files.
+The first source release `567e745` passed [GitHub Actions](https://github.com/Teoriadejuego/rihm/actions/runs/44197528706)
+and the new student site is served by Pages. The reconstructed researcher panel was
+deployed to the existing shinyapps.io application; real login, full-screen teaching
+and keyboard navigation were verified online. An online check then found a Shiny
+control-event registration issue; five regression tests cover its correction.
+
+Real publication verification will be recorded after the corrected panel is deployed.
+Deterministic test fixtures have not replaced the public JSON files.

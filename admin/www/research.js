@@ -32,15 +32,56 @@
   document.addEventListener("fullscreenchange", () => {
     if (!document.fullscreenElement) send("presentation_exited", Date.now());
   });
-  document.addEventListener("shiny:connected", () => {
+  // Shiny's lifecycle events are jQuery events, not native DOM events.
+  // Keep controls closed until an authenticated server message enables them.
+  const controlState = {
+    update_publish: false, refresh_latest: false,
+    load_demo: false, cancel_operation: false
+  };
+  let handlersInstalled = false;
+  let lifecycleInstalled = false;
+  const applyControls = () => {
+    for (const [id, enabled] of Object.entries(controlState)) {
+      const control = document.getElementById(id);
+      if (control) control.disabled = enabled !== true;
+    }
+  };
+  const resetControls = () => {
+    for (const id of Object.keys(controlState)) controlState[id] = false;
+    applyControls();
+  };
+  const installHandlers = () => {
+    if (handlersInstalled || !window.Shiny ||
+        typeof window.Shiny.addCustomMessageHandler !== "function") return;
     window.Shiny.addCustomMessageHandler("teacher-controls", (state) => {
-      for (const [id, enabled] of Object.entries(state)) {
-        const control = document.getElementById(id);
-        if (control) control.disabled = !enabled;
-      }
+      for (const id of Object.keys(controlState)) controlState[id] = state?.[id] === true;
+      applyControls();
     });
     window.Shiny.addCustomMessageHandler("teacher-exit-fullscreen", () => {
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     });
-  });
+    handlersInstalled = true;
+  };
+  const initialiseControls = () => {
+    installHandlers();
+    if (!lifecycleInstalled && window.jQuery) {
+      const events = window.jQuery(document);
+      events.on("shiny:connected.researchWorkbench", () => {
+        resetControls();
+        installHandlers();
+      });
+      events.on("shiny:disconnected.researchWorkbench", resetControls);
+      events.on("shiny:bound.researchWorkbench", (event) => {
+        if (event.target?.id === "teacher_login-user_id") resetControls();
+        // The authenticated UI is inserted after the initial connection.
+        if (Object.hasOwn(controlState, event.target?.id)) applyControls();
+      });
+      lifecycleInstalled = true;
+    }
+    applyControls();
+  };
+  initialiseControls();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialiseControls, { once: true });
+  }
 })();

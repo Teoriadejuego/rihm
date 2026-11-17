@@ -108,4 +108,3 @@ test('aggregate views meet automated accessibility checks at desktop and mobile 
     expect(report.violations).toEqual([]);
   }
 });
-
