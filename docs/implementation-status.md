@@ -71,3 +71,18 @@ The final control regression also verifies Shiny's requirement that each custom
 message callback accepts one argument. A real local browser checked disabled controls
 before cooldown, their later re-enabling, read recovery and server-requested fullscreen
 exit. Deterministic test fixtures never replaced the public JSON files.
+
+Final hosting bundle `12836354` was deployed and checked online: authentication,
+restoring the actual student publication, slide keyboard navigation, server-controlled
+fullscreen exit, cooldown state, zero JavaScript page errors and logout all passed.
+The live student page was also checked without mocked responses on desktop and mobile:
+the real publication rendered, filters made no additional requests, no private service
+was contacted, and the layout had no horizontal overflow. Local preview servers were
+stopped after verification; both online destinations remain available.
+
+Both validation workflows pin Ubuntu 24.04 so GitHub's rolling `ubuntu-latest`
+migration does not silently change their operating system. The 26.04 release runner
+spent more than sixteen minutes downloading system dependencies before application
+tests began. The pull-request workflow now installs the locked JavaScript dependencies
+and runs the same JavaScript/browser checks as the Pages build; its obsolete Quarto
+setup was removed.

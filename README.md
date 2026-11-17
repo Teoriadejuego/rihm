@@ -77,20 +77,21 @@ npm run test:e2e
 graph; use `renv::restore()` in an isolated library to reproduce it. To update that
 record intentionally, run `Rscript scripts/snapshot_dependencies.R`.
 
-Local development uses ignored `.Renviron` and `config/config.yml`. Hosted deployment
-uses ignored `config/hosting.Renviron`; start from the corresponding example file.
+Legacy local pipeline helpers use ignored `.Renviron` and `config/config.yml`. The
+researcher panel uses ignored `config/hosting.Renviron`; start from its example file.
 The private hosted bundle is created by `Rscript scripts/prepare_hosted_bundle.R`.
 It contains `hosting.env`, which must never enter Git or student artifacts.
 
 For local UI development:
 
 ```powershell
-Rscript -e "shiny::runApp('admin', launch.browser = TRUE)"
+Rscript -e "readRenviron('config/hosting.Renviron'); shiny::runApp('.', launch.browser = TRUE)"
 npm run dev
 ```
 
-The local teacher mode is for development on the owner's computer. The hosted entry
-point enables server-side authentication. See [operations](docs/operations.md) for
+This local preview uses the same authenticated entry point and private configuration
+as hosting. Running `admin` directly is an unauthenticated development mode on the
+owner's computer. See [operations](docs/operations.md) for
 deployment, credential rotation and recovery.
 
 To check static delivery with representative class sizes, serve the built site:
