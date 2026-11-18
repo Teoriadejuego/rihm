@@ -17,64 +17,75 @@ teacher_html_table <- function(data, caption = NULL) {
 }
 
 teacher_slides <- function() {
+  decision <- function(equal, unequal) div(class = "allocation-pair",
+    div(span("Equal split"), strong(equal)), div(span("Unequal split"), strong(unequal)))
   list(
-    list(title = "What do our choices reveal about inequality?", content = tagList(
-      p(class = "slide-lead", "Six allocation choices. Several social motives. A shared inquiry."),
-      div(class = "allocation-pair", div(strong("You"), span("Decision-maker")),
-        div(strong("Other"), span("Anonymous recipient")))),
-      notes = "Introduce the research question before showing classifications. Invite students to describe trade-offs rather than predict which choice is morally correct."),
-    list(title = "One decision-maker, two allocations", content = tagList(
-      p(class = "slide-lead", "Each option specifies a payoff for you and for another person."),
-      div(class = "allocation-pair", div(span("Equal option"), strong("10 / 10")),
-        div(span("Unequal example"), strong("12 / 4"))),
-      p("The recipient cannot change your choice. There is no negotiation.")),
-      notes = "Read each pair as your payoff first, the other person's payoff second. Explain the actual participation and incentive arrangements used in your class without implying arrangements that have not been established."),
-    list(title = "The six allocation choices", content = teacher_html_table(teacher_payoffs(),
-      "Payoff pairs: decision-maker / recipient"),
-      notes = "The equal allocation remains 10 / 10. Point out that some unequal options change only the recipient's payoff, while others change both. These are the documented task choices; do not alter them during the activity."),
-    list(title = "Read a pattern, not a personality", content = tagList(
-      p(class = "slide-lead", "The six decisions are interpreted together."),
-      tags$ul(tags$li("Altruist — choices favour the recipient and the joint payoff."), tags$li("Egalitarian — choices favour equal payoffs."), tags$li("Selfish — choices favour the decision-maker’s payoff."), tags$li("Antisocial — choices reduce the recipient’s payoff or widen inequality.")),
-      p("These indicators can overlap. They are not labels for individuals.")),
-      notes = "Explain that the names refer to indicators defined by the original classification rules. One consistent pattern can match more than one indicator. Avoid inviting students to identify classmates."),
-    list(title = "Two dimensions beneath the indicators", content = tagList(
-      div(class = "slide-columns", div(h3("Compassion"), p("Aversion to being ahead of the other person.")),
-        div(h3("Envy"), p("Aversion to being behind the other person."))),
-      p(class = "slide-lead", "Four ordered levels on each dimension form a 4 × 4 map.")),
-      notes = "Treat the levels as ordered categories, not calibrated psychological distances. The matrix describes consistent response patterns, not a clinical or personality measure."),
-    list(title = "Which responses are in the denominator?", content = tagList(
-      div(class = "slide-columns", div(h3("Four social indicators"), p("Consistent responses")),
-        div(h3("Inconsistent"), p("Complete binary responses"))),
-      p(class = "slide-lead", "The social percentages may add to more than 100%.")),
-      notes = "Partial and non-binary responses are excluded from public calculations. Inconsistency is a property of a response pattern under this rule, not an assessment of a student's ability."),
-    list(title = "Hidden is not zero", content = tagList(
-      p(class = "slide-lead", "Small counts and values that could expose them are suppressed."),
-      tags$ul(tags$li("A protected cell contains no published number."),
-        tags$li("Other related cells may also be hidden."), tags$li("Do not reconstruct a hidden result from other figures."))),
-      notes = "The threshold is five, with complementary and cross-table suppression. This reduces disclosure; it is not a claim of complete anonymity, especially when successive versions or outside knowledge are available."),
-    list(title = "What is the latest group?", content = tagList(
-      p(class = "slide-lead", "The one-hour window ending at the latest valid response EndDate."),
-      p("The latest EndDate is found before response-quality exclusions. Older completed activities remain available until newer responses arrive."),
-      p("Window: start excluded, end included. Times are shown in UTC.")),
-      notes = "There is no class code selector. The group is selected from timestamps, not the current clock. If unrelated groups complete the same survey in this hour, they are included together; organise collection accordingly."),
-    list(title = "Our latest published group", content = NULL,
-      notes = "This slide is pinned to the publication present when presentation mode began. Explain the sample and denominator before comparing bar lengths. An unpublished private demonstration is not used here."),
-    list(title = "A reference is a comparison, not a ranking", content = tagList(
-      p(class = "slide-lead", "Describe a difference before explaining it."),
-      tags$ul(tags$li("Compare like denominators."), tags$li("Use percentage points for percentage differences."),
-        tags$li("Notice sample composition and protected values."))),
-      notes = "The international reference is a sample of activity participants. It does not automatically represent entire countries, universities or genders. Differences alone do not establish causes or statistical significance."),
-    list(title = "What else could explain this pattern?", content = tagList(
-      div(class = "slide-columns", div(h3("Context"), p("Instructions, incentives and the setting.")),
-        div(h3("Composition"), p("Who took part, and which responses were usable."))),
-      p(class = "slide-lead", "Which explanations cannot be separated by these data?")),
-      notes = "Invite competing explanations and explicitly distinguish observation from interpretation. Encourage students to identify additional evidence that would help, without collecting identifiable disclosures in discussion."),
-    list(title = "From allocation choices to a discussion", content = tagList(
-      tags$ol(tags$li("What did you observe?"), tags$li("Which explanations remain plausible?"),
-        tags$li("Your team has a bonus to distribute. How would equal shares and individual rewards affect the team?")),
-      p("Corgnet, Espín & Hernán-González (2015), Frontiers in Behavioral Neuroscience, 9, 287.")),
-      notes = "Open Results QR and project the dashboard link. Invite students to hear two different interpretations before discussing their own. The task comes from The cognitive basis of social behavior: Cognitive reflection overrides antisocial but not always prosocial motives. DOI: 10.3389/fnbeh.2015.00287.")
+    list(title = "What makes a split fair?", content = tagList(
+      p(class = "slide-lead", "Think back to one choice where you hesitated. What were you weighing?"),
+      p("Take 20 seconds to think. Then hear a partner’s reasoning. You can discuss either option without disclosing your answer.")),
+      notes = "Use after the survey. Give everyone quiet thinking time, then ask for two different reasons. Keep individual votes private."),
+    list(title = "Would you give up two points?", content = tagList(
+      p("Decision D1 · Your payoff first, the recipient’s second."),
+      decision("10 / 10", "8 / 16"),
+      p(class = "slide-lead", "Which option gives the pair more? Who pays for that gain?")),
+      notes = "Pause before explaining. The total rises from 20 to 24. You give up 2 and the recipient gains 6. Ask how empathy or a concern for equal outcomes might change the decision."),
+    list(title = "What if your payoff stays at ten?", content = tagList(
+      p("Decision D3 · Your payoff first, the recipient’s second."),
+      decision("10 / 10", "10 / 18"),
+      p(class = "slide-lead", "Would your reasoning from D1 still apply? Explain what has changed.")),
+      notes = "Here the recipient can gain 8 at no cost to the decision-maker. Ask partners to make the strongest case for each option before comparing them."),
+    list(title = "What do the six decisions tell us?", content = tagList(
+      teacher_html_table(teacher_payoffs(), "Points for you / points for the recipient"),
+      p("Find two decisions where your own payoff stays the same. What changes for the recipient?")),
+      notes = "D3 increases the recipient’s payoff. D4 reduces it. Read the pattern across all six choices before interpreting a single response."),
+    list(title = "Which motives fit the same choice?", content = tagList(
+      div(class = "motive-grid",
+        div(h3("Altruist"), p("Favour gains for the recipient and the pair.")),
+        div(h3("Egalitarian"), p("Keep the two payoffs close.")),
+        div(h3("Selfish"), p("Favour the decision-maker’s own payoff.")),
+        div(h3("Antisocial"), p("Reduce the recipient’s payoff or widen the gap."))),
+      p("In D2, choosing 10 / 10 over 12 / 4 gives the recipient more and preserves equality. Which motives could fit?")),
+      notes = "Equality and concern for the recipient both fit this choice. The published indicators depend on the six-decision pattern and can overlap. Avoid assigning a personality to a classmate."),
+    list(title = "Read a percentage from our class", kind = "group",
+      notes = "Point to one visible bar and ask what its denominator is. Social indicators use consistent responses. Inconsistency is measured among complete binary responses. A protected cell has no published percentage. The group spans the hour ending at the latest valid class response in the database."),
+    list(title = "Compare the class with Madagascar", kind = "comparison",
+      notes = "This follows RIHM’s country-comparison exercise using the published egalitarian indicator. Ask students to read both sample sizes aloud. If either value is protected, discuss what the public data allow you to say."),
+    list(title = "What could explain a difference?", content = tagList(
+      p(class = "slide-lead", "Two classes in the same city could also produce different results."),
+      p("In pairs, suggest one explanation about who took part and one about the setting. What evidence would help you tell them apart?")),
+      notes = "Allow one minute. Possible explanations include recruitment, course, incentives or instructions. Ask what would support each account. A participating university sample cannot establish a national trait."),
+    list(title = "How would you divide a team bonus?", content = tagList(
+      p(class = "slide-lead", "Two colleagues finish a project. One logged more hours. The other spotted the error that saved the project."),
+      p("Agree on a rule for sharing the bonus. Would you announce that rule before the next project begins? Why?")),
+      notes = "Allow two minutes. Ask groups to defend equality, contribution or need. Invite another group to explain how the proposed rule might change future cooperation."),
+    list(title = "Who should pay for a cooler school?", content = tagList(
+      p(class = "slide-lead", "A school can shade its playground. All families benefit, but some can contribute much more than others."),
+      p("Would you ask for equal payments or payments based on means? Whose perspective would you seek before deciding?")),
+      notes = "Adaptation of RIHM’s climate and community prompts. Ask who bears the cost today and who receives the benefit later. Connect one proposal back to D1."),
+    list(title = "Would your rule work at home?", content = tagList(
+      p(class = "slide-lead", "Two siblings share the care of a relative. One lives nearby. The other can afford more of the expenses."),
+      p("Try applying your bonus rule to this family. What would you keep, and what would you change?")),
+      notes = "Use the fictional family so students can join without personal disclosure. Give each partner a turn. Ask how time, money and need affect what counts as a fair contribution."),
+    list(title = "Test one observation with the dashboard", kind = "results",
+      notes = "Give the class two minutes. Invite one observation grounded in the chart and one question the data leave open. Discussion themes adapted from the RIHM teacher guide on promoting reflection.")
   )
+}
+
+teacher_comparison_slide <- function(results) {
+  if (teacher_results_empty(results)) return(p("Open this slide after the teacher publishes the group results."))
+  cells <- results$cells
+  one <- function(scope, country) {
+    row <- cells[cells$scope == scope & cells$country == country & cells$gender == "all" &
+      cells$behaviour == "egalitarian", , drop = FALSE]
+    if (!nrow(row)) return(p("No published cell"))
+    if (!identical(row$suppressed[[1]], FALSE) || is.na(row$percentage[[1]])) return(p("Protected"))
+    tagList(strong(sprintf("%.1f%%", row$percentage[[1]])),
+      span(sprintf("%d of %d consistent responses", row$count[[1]], row$denominator_n[[1]])))
+  }
+  tagList(p("Egalitarian choices across the six decisions"),
+    div(class = "allocation-pair", div(h3("Our class"), one("class", "Class")),
+      div(h3("Madagascar sample"), one("international", "Madagascar"))),
+    p("Read each sample size. If both percentages are visible, how many percentage points apart are they?"))
 }
 
 teacher_results_empty <- function(results) {

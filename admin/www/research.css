@@ -109,3 +109,15 @@ body { background:var(--lab-wash); color:var(--lab-ink); font-family:"Segoe UI",
 .survey-fallback summary { margin:0; }
 .survey-fallback p { margin:6px auto; }
 .research-sequence .action-button { font-weight:700; }
+
+.motive-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem 2rem; }
+.motive-grid h3,.motive-grid p { margin:0 0 .4rem; }
+.deck-nav { display:none; align-items:center; gap:.75rem; }
+.presentation-stage:fullscreen .deck-nav { display:flex; }
+.deck-nav button { color:white; background:transparent; border:1px solid #a4b7bf; }
+.deck-results-link { display:flex; align-items:center; gap:2rem; flex-wrap:wrap; }
+.deck-results-link dashboard-qr { display:block; width:min(32vh,65vw); }
+.presentation-stage .deck-results-link a { color:white; overflow-wrap:anywhere; }
+.presentation-stage:fullscreen h2 { font-size:clamp(2rem,5.8vh,3.8rem); max-width:32ch; }
+.presentation-stage:fullscreen .research-table th,.presentation-stage:fullscreen .research-table td { padding:.35vh 1rem; }
+@media (max-height:800px) { .presentation-stage:fullscreen .allocation-pair { margin:2vh 0; } }

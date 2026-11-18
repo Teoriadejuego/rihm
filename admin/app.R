@@ -273,6 +273,13 @@ server <- function(input, output, session) {
   output$candidate_matrix <- renderTable({ req(authenticated(), candidate()); teacher_table_preview(candidate()$results, "matrix_cells") }, striped = TRUE)
 
   move_slide <- function(direction) { req(authenticated()); slide(max(1L, min(length(slides), slide() + direction))) }
+  output$deck_position <- renderText({ req(authenticated()); paste(slide(), "/", length(slides)) })
+  outputOptions(output, "deck_position", suspendWhenHidden = FALSE)
+  observeEvent(input$deck_previous, move_slide(-1L))
+  observeEvent(input$deck_next, move_slide(1L))
+  observeEvent(input$deck_exit, {
+    req(authenticated()); presenting(FALSE); pinned(NULL); session$sendCustomMessage("teacher-exit-fullscreen", list())
+  })
   observeEvent(input$slide_previous, move_slide(-1L))
   observeEvent(input$slide_next, move_slide(1L))
   observeEvent(input$slide_key, { req(authenticated()); if (input$slide_key$direction %in% c(-1, 1)) move_slide(input$slide_key$direction) })
@@ -288,7 +295,18 @@ server <- function(input, output, session) {
   output$slide_position <- renderUI({ req(authenticated()); span(paste("Slide", slide(), "of", length(slides))) })
   output$projection_slide <- renderUI({
     req(authenticated()); item <- slides[[slide()]]
-    tagList(h2(item$title), if (slide() == 9L) tagList(teacher_snapshot_summary(projected()), teacher_group_bars(projected())) else item$content)
+    body <- switch(item$kind %||% "text",
+      group = tagList(teacher_group_bars(projected()), p("Each bar shows a share of consistent responses. Which patterns could overlap?")),
+      comparison = teacher_comparison_slide(projected()),
+      results = {
+        url <- config_result$value$publication$pages_base_url
+        tagList(p("Choose a reference country. Report one visible difference and one question about it."),
+          if (!is.null(url)) div(class = "deck-results-link",
+            htmltools::tag("dashboard-qr", list(class = "survey-qr-image", `data-url` = url)),
+            tags$a(href = url, target = "_blank", rel = "noopener", url)))
+      },
+      item$content)
+    tagList(h2(item$title), body)
   })
   output$presenter_notes <- renderText({ req(authenticated()); slides[[slide()]]$notes })
   output$presentation_snapshot <- renderText({

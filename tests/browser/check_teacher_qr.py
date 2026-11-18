@@ -127,6 +127,33 @@ def main():
         page.locator('#project_results').click()
         page.wait_for_function('document.fullscreenElement === null')
 
+        STAGE = 'classroom projection'
+        page.set_viewport_size({'width': 1280, 'height': 720})
+        page.locator('a[data-value="Latest group"]').click()
+        expect(page.locator('#latest_summary')).to_contain_text('Confirmed student snapshot', timeout=60000)
+        page.locator('a[data-value="Teach"]').click()
+        page.locator('#start_presentation').click()
+        page.wait_for_function('document.fullscreenElement?.id === "presentationStage"')
+        titles = []
+        for number in range(1, 13):
+            STAGE = f'projecting slide {number}'
+            expect(page.locator('#deck_position')).to_have_text(f'{number} / 12')
+            titles.append(page.locator('#projection_slide h2').inner_text())
+            assert page.evaluate('document.fullscreenElement.scrollHeight <= document.fullscreenElement.clientHeight + 1')
+            if number == 7:
+                expect(page.locator('#projection_slide')).to_contain_text('Madagascar sample')
+            if number < 12:
+                page.locator('#deck_next').click()
+        assert len(set(titles)) == 12
+        deck_qr = page.locator('#projection_slide dashboard-qr svg')
+        assert decode(Image.open(BytesIO(deck_qr.screenshot()))) == dashboard_url
+        page.locator('#deck_previous').click()
+        expect(page.locator('#deck_position')).to_have_text('11 / 12')
+        page.keyboard.press('Home')
+        expect(page.locator('#deck_position')).to_have_text('1 / 12')
+        page.locator('#deck_exit').click()
+        page.wait_for_function('document.fullscreenElement === null')
+
         STAGE = 'logout and isolation'
         page.locator('#teacher_logout').click()
         page.locator('#teacher_login-user_id').wait_for()
