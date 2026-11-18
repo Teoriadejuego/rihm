@@ -1,5 +1,7 @@
 import { createSnapshotReader, createSnapshotStore, startRefresh } from './src/snapshot.js';
 import { createView, updateViewStatus } from './src/view.js';
+import { setupNotebook } from './src/notebook.js';
+setupNotebook(document.getElementById('notebook'));
 const selection = { country: 'All Countries', gender: 'all', scope: 'class', behaviours: new Set(['altruist', 'egalitarian', 'selfish', 'antisocial']) };
 const root = document.getElementById('snapshotView');
 let state = { snapshot: null, checking: true, checkedAt: null, error: null };
@@ -20,7 +22,17 @@ function paint(next = state, selectionChanged = false) {
     .filter((node) => node.scrollLeft || node.scrollTop)
     .map((node) => ({ id: node.id, left: node.scrollLeft, top: node.scrollTop }));
   const viewport = { left: window.scrollX, top: window.scrollY };
-  const view = createView(state, selection, { onSelection: (key, value) => { selection[key] = value; paint(state, true); }, onRefresh: () => store.check() });
+  const view = createView(state, selection, {
+    onSelection: (key, value) => { selection[key] = value; paint(state, true); },
+    onClassExample: () => {
+      selection.country = 'Madagascar';
+      selection.gender = 'all';
+      selection.behaviours.add('egalitarian');
+      paint(state, true);
+      document.getElementById('example-reading')?.focus();
+    },
+    onRefresh: () => store.check()
+  });
   root.replaceChildren(view);
   mounted = true;
   renderedSnapshot = state.snapshot;

@@ -86,6 +86,36 @@ function comparisonTable(model) {
   }
   const scroll = el('div', 'table-scroll'); scroll.id = 'comparisonScroll'; scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Scrollable comparison table'); scroll.append(table); details.append(scroll); return details;
 }
+function classroomExample(model, actions) {
+  const section = el('section', 'sample-reading');
+  const title = el('h3', '', 'Read the egalitarian indicator');
+  title.id = 'example-reading';
+  title.tabIndex = -1;
+  section.append(title);
+  for (const [scope, label] of [['class', 'Your class'], ['international', model.country || 'Reference']]) {
+    const cell = model.cell(scope, 'egalitarian');
+    const line = el('p');
+    line.append(el('strong', '', label + ' · '), document.createTextNode(visible(cell)
+      ? `${valueLabel(cell)} (${countLabel(cell.count)} of ${countLabel(cell.denominator_n)} consistent responses).`
+      : valueLabel(cell)));
+    section.append(line);
+  }
+  const gap = difference(model.cell('class', 'egalitarian'), model.cell('international', 'egalitarian'));
+  section.append(el('p', '', gap === null ? 'There are fewer than two public percentages to compare.'
+    : gap === 0 ? 'Both samples have the same published percentage.'
+    : `The class is ${Math.abs(gap).toFixed(1)} percentage points ${gap > 0 ? 'above' : 'below'} this reference sample.`));
+  const notes = el('a', '', 'Write about this comparison');
+  notes.href = '#note-comparison';
+  notes.addEventListener('click', () => { document.getElementById('note-comparison').closest('details').open = true; });
+  section.append(notes);
+  if (model.countries.includes('Madagascar')) {
+    const button = el('button', 'refresh-button', 'Use the slide example: Madagascar, all respondents');
+    button.type = 'button';
+    button.addEventListener('click', actions.onClassExample);
+    section.prepend(button);
+  }
+  return section;
+}
 function publicationDetails(m) {
   const details = el('details', 'publication-details'); details.id = 'publicationDetails'; const summary = el('summary', '', 'Publication and method details'); summary.id = 'publicationSummary'; details.append(summary); const dl = el('dl', 'publication-list');
   for (const [label, value] of [['Publication', m.publication_id], ['Published', dateLabel(m.generated_at_utc)], ['Format', m.schema_version], ['Group source downloaded', m.class_source_at_utc ? dateLabel(m.class_source_at_utc) : m.source_snapshot_at_utc ? dateLabel(m.source_snapshot_at_utc) : 'Not available'], ['Reference source downloaded', m.reference_source_at_utc ? dateLabel(m.reference_source_at_utc) : 'Not available in this publication'], ['Classification', m.classification_version || 'Original classification (legacy format)'], ['Privacy method', m.privacy_version || 'Original suppression (legacy format)'], ['Protection threshold', `${m.minimum_cell_size}`], ['Content fingerprint', m.content_fingerprint || 'Not available in this publication']]) dl.append(el('dt', '', label), el('dd', '', value));
@@ -143,7 +173,7 @@ export function createView(state, selection, actions) {
   filters.append(select('countrySelect', 'Reference country', model.countries.map((c) => [c, c]), model.country, (v) => actions.onSelection('country', v)), select('genderSelect', 'Gender', [['all', 'All respondents'], ['female', 'Female'], ['male', 'Male']], selection.gender, (v) => actions.onSelection('gender', v)));
   const fieldset = el('fieldset'); fieldset.append(el('legend', '', 'Social indicators')); const checks = el('div', 'indicator-controls');
   for (const name of SOCIAL) { const label = el('label'), input = el('input'); input.type = 'checkbox'; input.id = `indicator-${name}`; input.checked = selection.behaviours.has(name); input.addEventListener('change', () => { const value = new Set(selection.behaviours); if (input.checked) value.add(name); else value.delete(name); actions.onSelection('behaviours', value); }); label.append(input, document.createTextNode(LABELS[name])); checks.append(label); }
-  fieldset.append(checks); filters.append(fieldset); fragment.append(filters, metrics(model));
+  fieldset.append(checks); filters.append(fieldset); fragment.append(filters, classroomExample(model, actions), metrics(model));
   const grid = el('div', 'data-grid'); grid.append(chart(model), matrix(data, model, selection, actions)); fragment.append(grid, differenceChart(model));
   const inconsistent = el('section', 'inconsistent-section'); inconsistent.append(el('h3', '', 'Inconsistent responses'), el('p', '', 'Reported separately: percentage of complete binary responses, including consistent and inconsistent patterns.')); const bars = el('div', 'inconsistent-bars'); bars.append(bar(model.cell('class', 'inconsistent'), 'Group', 'group'), bar(model.cell('international', 'inconsistent'), 'Reference', 'reference')); inconsistent.append(bars); fragment.append(inconsistent, comparisonTable(model), publicationDetails(m)); return fragment;
 }

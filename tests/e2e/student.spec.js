@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { readFile } from 'node:fs/promises';
 import { fixture, emptyFixture, bundle, protect } from '../js/fixtures.js';
 
 async function serveFixture(page, provider) {
@@ -17,6 +18,37 @@ async function serveFixture(page, provider) {
   });
   return { requests, unexpected, errors };
 }
+
+test('follows the illustrated slide example and downloads a private reflection on mobile', async ({ page }) => {
+  const data = fixture();
+  protect(data.cells.find(cell => cell.country === 'Spain' && cell.gender === 'all' && cell.behaviour === 'egalitarian'));
+  const log = await serveFixture(page, () => bundle(data));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./');
+  await page.getByText('Check the two totals', { exact: true }).click();
+  await expect(page.getByText(/You give up 2 tickets/)).toBeVisible();
+  await page.getByText('Which motives could fit the same decision?', { exact: true }).click();
+  expect(await page.locator('main img').evaluateAll(images => images.map(image => image.complete && image.naturalWidth > 0))).toEqual(Array(6).fill(true));
+  await page.getByLabel('Gender', { exact: true }).selectOption('female');
+  await page.getByRole('button', { name: /Use the slide example/ }).click();
+  await expect(page.locator('#countrySelect')).toHaveValue('Madagascar');
+  await expect(page.locator('#genderSelect')).toHaveValue('all');
+  await expect(page.locator('.sample-reading')).toContainText('Madagascar');
+  await page.locator('#countrySelect').selectOption('Spain');
+  await expect(page.locator('.sample-reading')).toContainText('Spain · Protected');
+  await expect(page.locator('.sample-reading')).toContainText('fewer than two public percentages');
+  await page.getByRole('link', { name: 'Write about this comparison' }).click();
+  await page.locator('#note-comparison').fill('What might recruitment change?');
+  await page.reload();
+  await expect(page.locator('#note-comparison')).toHaveValue('What might recruitment change?');
+  const pending = page.waitForEvent('download');
+  await page.locator('#download-notes').click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe('rihm-reflection.txt');
+  expect(await readFile(await download.path(), 'utf8')).toContain('What might recruitment change?');
+  expect(log.unexpected).toEqual([]);
+  expect(log.errors).toEqual([]);
+});
 
 test('loads verified aggregates and filters locally without private service requests', async ({ page }, testInfo) => {
   const b = bundle(), log = await serveFixture(page, () => b);

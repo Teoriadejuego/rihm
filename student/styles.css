@@ -22,3 +22,36 @@ h1{max-width:14ch}
 .discussion-prompts details p { margin:.6rem 0 .1rem; }
 .discussion-prompts > a { display:inline-block; margin-top:.9rem; }
 .site-header nav { flex-wrap:wrap; }
+.lesson-links { display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center; }
+.lesson-links a { color:var(--blue); text-decoration:underline; font-weight:600; }
+.lesson-links a:first-child { padding:10px 15px; border-radius:5px; background:var(--blue); color:white; text-decoration:none; }
+.ticket-spread { margin:0; }
+.ticket-pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ticket-pair > div { display:flex; flex-direction:column; justify-content:space-between; background:white; border:1px solid var(--line); border-radius:10px; padding:12px 5px; text-align:center; }
+.ticket-pair img { width:100%; height:auto; }
+.ticket-pair strong { font-size:clamp(12px,1vw,16px); margin-top:8px; }
+.examples { border-block:1px solid var(--line); padding:32px 0; margin-bottom:34px; }
+.decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(20px,4vw,60px); margin:24px 0; }
+.examples summary { color:var(--blue); font-weight:650; padding:8px 0; }
+.examples details p { margin-top:6px; }
+.motive-guide { border-top:1px solid var(--line); padding-top:12px; }
+.motive-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.motive-cards > div { background:white; padding:14px; border:1px solid var(--line); border-radius:7px; }
+.motive-cards img { display:block; width:100%; height:100px; object-fit:contain; margin-bottom:12px; }
+.motive-cards p { font-size:14px; }
+.sample-reading { background:#eef3f9; padding:20px; border-left:4px solid var(--blue); margin:20px 0; }
+.sample-reading p { margin:6px 0; }
+.sample-reading button { float:right; max-width:100%; margin:0 0 12px 12px; white-space:normal; }
+.sample-reading::after { display:block; clear:both; content:''; }
+.discussion h2 { margin-bottom:16px; }
+.discussion-prompts label { display:block; margin:10px 0; }
+.discussion-prompts textarea { width:100%; resize:vertical; min-height:75px; font:inherit; padding:10px; border:1px solid var(--muted); border-radius:4px; color:var(--ink); }
+.discussion-prompts button { margin-top:14px; }
+.discussion-prompts button:disabled { opacity:.65; cursor:default; }
+.discussion-prompts #note-status { margin-top:8px; font-size:13px; }
+@media(max-width:720px) {
+  .lesson-links { justify-content:flex-start; }
+  .decision-grid { grid-template-columns:1fr; }
+  .motive-cards { grid-template-columns:1fr 1fr; }
+  .sample-reading button { float:none; margin:0 0 14px; }
+}
