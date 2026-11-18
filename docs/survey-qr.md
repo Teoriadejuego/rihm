@@ -56,3 +56,8 @@ the displayed QR (desktop, fullscreen and mobile) and the downloaded PNG. The
 hosted release is shinyapps.io bundle `12837959`, from application source `828faa8`.
 The public artifact scan and a scan for exact private credential values also passed;
 the published aggregate JSON was not changed.
+
+GitHub Actions [run 44280856005](https://github.com/Teoriadejuego/rihm/actions/runs/44280856005)
+also passed the R suite, 62 JavaScript tests, 11 student browser checks and the public
+privacy scan, then deployed successfully. The live public JSON pair was verified
+byte-for-byte against the unchanged local source after deployment.
