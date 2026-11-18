@@ -34,7 +34,9 @@ def main():
         requests, errors = [], []
         page.on('request', lambda request: requests.append(request.url))
         page.on('pageerror', lambda error: errors.append(type(error).__name__))
-        page.goto(BASE, wait_until='networkidle', timeout=90000)
+        # Hosted Shiny may keep a SockJS long-poll request open indefinitely.
+        # Verify the login and socket explicitly instead of waiting for idle HTTP.
+        page.goto(BASE, wait_until='domcontentloaded', timeout=90000)
         page.locator('#teacher_login-user_id').wait_for(timeout=90000)
         expect(page.locator('#generate_survey_qr')).to_have_count(0)
 
@@ -54,6 +56,7 @@ def main():
         login()
         STAGE = 'generation and independent decoding'
         page.locator('#generate_survey_qr').click()
+        expect(page.locator('#survey_qr_image svg')).to_be_visible()
         code = page.locator('#survey_qr_code').inner_text()
         assert re.fullmatch(r'[1-9][0-9]{5}', code)
         url = page.locator('#survey_qr_link').get_attribute('href')

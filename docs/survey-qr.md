@@ -49,3 +49,10 @@ flow, independent QR decoding, downloaded PNG, fullscreen, tab navigation, mobil
 layout, clipboard and logout. It requires Python Playwright, Pillow and `zxing-cpp`
 (development checks only). Credentials are read from the ignored hosting file and
 are never printed. The checker does not open or submit the Qualtrics survey.
+
+On 2026-11-18 the complete R suite and 62 JavaScript tests passed. The browser
+checker passed locally and on the hosted panel, including independent decoding of
+the displayed QR (desktop, fullscreen and mobile) and the downloaded PNG. The
+hosted release is shinyapps.io bundle `12837959`, from application source `828faa8`.
+The public artifact scan and a scan for exact private credential values also passed;
+the published aggregate JSON was not changed.
