@@ -20,6 +20,10 @@ a real survey.
 
 ## Regular teaching
 
+Open **Survey QR** and select **Generate QR** to invite the class. Use **Project QR**
+for fullscreen projection or download the image; the shared code is printed below
+the QR. Keep it for the whole class. See [class survey QR](survey-qr.md) for details.
+
 Sign in, open Project or Teach, and use the last published snapshot. Update and publish
 refreshes both surveys after the shared three-minute cooldown. The latest response
 hour is relative to the newest EndDate in the class database. An old response date is

@@ -12,9 +12,14 @@ Teachers and students need only a browser.
 
 1. Sign in with the private teacher account.
 2. Open **Project** for the protocol or **Teach** for slides and presenter notes.
-3. Open **Latest group** to inspect the most recent snapshot.
-4. In **Update**, choose **Update and publish** after the shared three-minute cooldown.
-5. Review acquisition/publication status and the private **Diagnostics**.
+3. Open **Survey QR**, choose **Generate QR** and **Project QR** for the class.
+   The QR and the code printed below it share one survey invitation. You can also
+   download the image or copy the link; keep the same code for everyone in that class.
+4. Open **Latest group** to inspect the most recent snapshot.
+5. In **Update**, choose **Update and publish** after the shared three-minute cooldown.
+6. Review acquisition/publication status and the private **Diagnostics**.
+
+See [class survey QR](docs/survey-qr.md) for projection and download instructions.
 
 The update downloads both configured Qualtrics surveys once, validates them, applies
 classification and suppression, and publishes the aggregate JSON automatically.

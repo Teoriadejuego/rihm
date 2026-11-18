@@ -30,7 +30,8 @@ teacher_panel_ui <- teacher_panel_layout()
 ui <- fluidPage(
   theme = bs_theme(version = 5, primary = "#096b67", bg = "#edf3f6", fg = "#213746"),
   tags$head(tags$link(rel = "stylesheet", href = "teacher-assets/research.css"),
-    tags$script(src = "teacher-assets/research.js")),
+    tags$script(src = "teacher-assets/research.js"),
+    tags$script(type = "module", src = "teacher-assets/survey-qr.js")),
   if (!is.null(auth_setup$error)) div(class = "research-empty", h2("Teacher setup required"), p(auth_setup$error))
   else if (cloud_mode) uiOutput("teacher_access_ui") else teacher_panel_ui
 )

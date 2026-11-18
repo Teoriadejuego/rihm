@@ -59,7 +59,8 @@ prepare_hosted_bundle <- function(project_root = ".", timestamp = Sys.time()) {
     recursive = FALSE, all.files = FALSE)
   if (!length(modules)) fail("No R application modules were found.")
   private_ui <- c("admin/modules/content.R", "admin/modules/layout.R")
-  public_assets <- c("admin/www/research.css", "admin/www/research.js")
+  public_assets <- c("admin/www/research.css", "admin/www/research.js", "admin/www/survey-qr.js",
+    "admin/www/survey-qr-core.js", "admin/www/qrcodegen-v1.8.0.js")
   sources <- c("app.R", "admin/app.R", private_ui, public_assets, paste0("R/", sort(modules)), "DESCRIPTION",
     "config/reference_locations.csv", "config/hosting.Renviron")
   destinations <- sources

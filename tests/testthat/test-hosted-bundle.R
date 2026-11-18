@@ -5,7 +5,8 @@ testthat::test_that("hosted bundles use a closed whitelist and preserve the call
   for (directory in c("admin", "admin/modules", "admin/www", "R", "config", "snapshots", "staging", "student")) {
     dir.create(file.path(root, directory), recursive = TRUE)
   }
-  ui_files <- c("admin/modules/content.R", "admin/modules/layout.R", "admin/www/research.css", "admin/www/research.js")
+  ui_files <- c("admin/modules/content.R", "admin/modules/layout.R", "admin/www/research.css", "admin/www/research.js",
+    "admin/www/survey-qr.js", "admin/www/survey-qr-core.js", "admin/www/qrcodegen-v1.8.0.js")
   for (path in c("app.R", "admin/app.R", ui_files, "R/load_all.R", "R/helper.R", "config/reference_locations.csv",
     "config/config.yml", ".Renviron", "snapshots/private.json", "student/private.json", "R/notes.txt",
     "admin/www/private.env", "admin/modules/private-notes.txt", "admin/www/private.html")) {
