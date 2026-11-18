@@ -52,6 +52,11 @@ and uploads it. Chromium installation uses the headless-shell option; it no long
 downloads the unused full browser. Local `npm run test:e2e` still builds automatically,
 while `npm run test:e2e:built` tests an existing build.
 
+R setup temporarily disables APT's optional recommendations while retaining the
+requested tools and their required dependencies. The normal APT policy is restored
+before installing application dependencies. This targets the 172-package tool setup
+observed in the first deployment attempt; all R and browser checks still run.
+
 No framework or dependency was added. Existing development-tool `picomatch` audit
 findings remain documented in implementation-status.md; production JavaScript has no
 runtime package dependencies. This pass does not claim a general hosting-capacity or
