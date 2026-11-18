@@ -89,7 +89,10 @@ test('supports mobile and keyboard access without losing publication metadata', 
 
 test('legacy empty publication and initial network failure remain usable', async ({ page }) => {
   let served = { error: true }; await serveFixture(page, () => served); await page.goto('./'); await expect(page.locator('#dataStatus')).toContainText('could not be loaded');
+  await expect(page.locator('#compare')).toHaveCount(1); await expect(page.locator('#compare')).toContainText('Use Check for updates');
+  await page.getByRole('link', { name: 'Compare', exact: true }).click(); await expect(page).toHaveURL(/#compare$/);
   served = bundle(emptyFixture()); await page.getByRole('button', { name: 'Check for updates' }).click(); await expect(page.locator('#dataStatus')).toContainText('has not published a group yet');
+  await expect(page.locator('#compare')).toHaveCount(1); await expect(page.locator('#compare')).toContainText('after the researcher publishes');
   await expect(page.getByRole('heading', { name: 'How to read this experiment' })).toBeVisible(); await expect(page.getByLabel('Reference country', { exact: true })).toHaveCount(0);
 });
 
@@ -107,4 +110,65 @@ test('aggregate views meet automated accessibility checks at desktop and mobile 
     const report = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
     expect(report.violations).toEqual([]);
   }
+});
+
+test('unchanged and failed checks preserve DOM identity, focus, details and horizontal scroll', async ({ page }) => {
+  await page.clock.install(); await page.setViewportSize({ width: 390, height: 844 });
+  let served = bundle(); const log = await serveFixture(page, () => served);
+  await page.goto('./'); await expect(page.locator('#dataStatus')).toContainText('Publication checked');
+  await page.locator('#comparisonSummary').click(); await page.locator('#publicationSummary').click();
+  await page.locator('#comparisonSummary').focus();
+  await page.evaluate(() => {
+    window.auditNodes = { country: document.querySelector('#countrySelect'), matrix: document.querySelector('#matrixTable'), summary: document.querySelector('#comparisonSummary'), scroll: document.querySelector('#comparisonScroll'), status: document.querySelector('#dataStatus') };
+    window.auditRemoved = 0; window.auditCreated = 0;
+    new MutationObserver((records) => { window.auditRemoved += records.reduce((sum, record) => sum + record.removedNodes.length, 0); }).observe(document.querySelector('#snapshotView'), { childList: true });
+    const createElement = document.createElement.bind(document);
+    document.createElement = (...args) => { window.auditCreated++; return createElement(...args); };
+    document.querySelector('#comparisonScroll').scrollLeft = 150;
+  });
+  for (let i = 0; i < 5; i++) {
+    await page.clock.fastForward(60000); await expect.poll(() => log.requests.length).toBe(3 + i);
+    await expect(page.locator('#dataStatus')).toContainText('Publication checked');
+  }
+  served = { error: true }; await page.clock.fastForward(60000); await expect(page.locator('#dataStatus')).toContainText('last verified publication remains');
+  expect(await page.evaluate(() => ({
+    removed: window.auditRemoved, created: window.auditCreated,
+    country: window.auditNodes.country === document.querySelector('#countrySelect'),
+    matrix: window.auditNodes.matrix === document.querySelector('#matrixTable'),
+    summary: window.auditNodes.summary === document.querySelector('#comparisonSummary'),
+    scroll: window.auditNodes.scroll === document.querySelector('#comparisonScroll'),
+    status: window.auditNodes.status === document.querySelector('#dataStatus'),
+    scrollLeft: document.querySelector('#comparisonScroll').scrollLeft
+  }))).toEqual({ removed: 0, created: 0, country: true, matrix: true, summary: true, scroll: true, status: true, scrollLeft: 150 });
+  await expect(page.locator('#comparisonSummary')).toBeFocused();
+  await expect(page.locator('#comparisonDetails')).toHaveAttribute('open', ''); await expect(page.locator('#publicationDetails')).toHaveAttribute('open', '');
+  expect(log.requests.filter((url) => url.endsWith('public_results.json'))).toHaveLength(1);
+});
+
+test('a new publication restores focused disclosures and scroll while replacing all aggregate views together', async ({ page }) => {
+  await page.clock.install(); await page.setViewportSize({ width: 390, height: 844 });
+  let served = bundle(); await serveFixture(page, () => served); await page.goto('./'); await expect(page.locator('#dataStatus')).toContainText('Publication checked');
+  await page.getByLabel('Reference country', { exact: true }).selectOption('Spain');
+  await page.locator('#comparisonSummary').click(); await page.locator('#publicationSummary').click(); await page.locator('#comparisonSummary').focus();
+  await page.evaluate(() => { document.querySelector('#comparisonScroll').scrollLeft = 150; window.previousMatrix = document.querySelector('#matrixTable'); });
+  served = bundle(fixture({ id: 'demo-scrolled-update', seed: 4 }));
+  await page.clock.fastForward(60000); await expect(page.locator('#publicationMeta')).toContainText('demo-scrolled-update');
+  expect(await page.evaluate(() => window.previousMatrix === document.querySelector('#matrixTable'))).toBe(false);
+  await expect(page.locator('#comparisonSummary')).toBeFocused();
+  await expect(page.locator('#comparisonDetails')).toHaveAttribute('open', ''); await expect(page.locator('#publicationDetails')).toHaveAttribute('open', '');
+  expect(await page.locator('#comparisonScroll').evaluate((node) => node.scrollLeft)).toBe(150);
+  await expect(page.getByLabel('Reference country', { exact: true })).toHaveValue('Spain');
+  const expected = served.data.cells.find((cell) => cell.scope === 'class' && cell.gender === 'all' && cell.behaviour === 'altruist');
+  await expect(page.locator('[data-indicator="altruist"] .group .bar-value')).toHaveText(`${expected.percentage.toFixed(1)}%`);
+  await expect(page.locator('#comparisonTable tbody tr').first()).toContainText(`${expected.count} / ${expected.denominator_n}`);
+});
+
+test('Compare already has an explanatory destination before JavaScript runs', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL: 'http://127.0.0.1:4173/rihm/' });
+  try {
+    const page = await context.newPage(); const log = await serveFixture(page, () => bundle()); await page.goto('./');
+    await page.getByRole('link', { name: 'Compare', exact: true }).click(); await expect(page).toHaveURL(/#compare$/);
+    await expect(page.locator('#compare')).toHaveCount(1); await expect(page.locator('#compare')).toContainText('once the latest publication has been verified');
+    expect(log.requests).toHaveLength(0);
+  } finally { await context.close(); }
 });

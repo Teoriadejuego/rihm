@@ -40,3 +40,48 @@ testthat::test_that("a valid but different built snapshot cannot pass the artifa
   jsonlite::write_json(public_manifest(results, text), file.path(built, "public_manifest.json"), auto_unbox = TRUE)
   testthat::expect_error(scan_public_files(root), "built artifact differs")
 })
+
+public_scan_fixture <- function() {
+  root <- tempfile("closed-public-scan-")
+  original <- testthat::test_path("..", "..", "student", "data")
+  for (directory in file.path(root, "student", c("data", "_site/data"))) {
+    dir.create(directory, recursive = TRUE)
+    invisible(file.copy(file.path(original, c("public_results.json", "public_manifest.json")), directory))
+  }
+  root
+}
+
+testthat::test_that("the public scan allows reviewed HTML, generated assets and the exact JSON pair", {
+  root <- public_scan_fixture()
+  built <- file.path(root, "student", "_site")
+  dir.create(file.path(built, "assets"))
+  writeLines("<main>Protected aggregates</main>", file.path(built, "index.html"))
+  writeLines("document.title = 'Classroom';", file.path(built, "assets", "index-Abc_1234.js"))
+  writeLines("body { color: black; }", file.path(built, "assets", "index-Abc-1234.css"))
+  testthat::expect_length(scan_public_files(root), 7L)
+})
+
+testthat::test_that("public inputs cannot contain any extra files or hidden directories", {
+  for (name in c("extra.json", "raw.csv", ".env", "nested/extra.json", ".cache/extra.json")) {
+    root <- public_scan_fixture()
+    path <- file.path(root, "student", "data", name)
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    writeLines("synthetic-private-marker", path)
+    testthat::expect_error(scan_public_files(root), "unexpected public file or directory")
+  }
+})
+
+testthat::test_that("built artifacts reject unknown types and hidden outputs instead of skipping them", {
+  for (name in c("debug.log", "unknown.bin", ".env", "assets/.hidden.js",
+    "assets/source.js.map", "assets/notes.txt", "assets/unversioned.js", "data/extra.json", ".private/index.html")) {
+    root <- public_scan_fixture()
+    path <- file.path(root, "student", "_site", name)
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    writeLines("synthetic-private-marker", path)
+    testthat::expect_error(scan_public_files(root, secrets = "synthetic-private-marker"),
+      "unexpected public file or directory")
+  }
+  root <- public_scan_fixture()
+  dir.create(file.path(root, "student", "_site", ".empty-hidden"))
+  testthat::expect_error(scan_public_files(root), "unexpected public file or directory")
+})

@@ -30,6 +30,12 @@ Do not retry a potentially accepted GitHub write blindly; reconciliation checks 
 branch and matching publication. Demonstration is a preview with synthetic data and
 does not publish automatically. Presentation mode pins the selected snapshot.
 
+Cancellation is cooperative: an in-flight network request can finish, but the worker
+checks cancellation before continuing to another download or preparation phase.
+An already accepted publication write is still reconciled. Loading the latest group
+reads the verified student publication directly; it does not wait for a GitHub API
+lookup. Known pending publication commits remain separate from that confirmed view.
+
 ## Deployment
 
 Use one Shiny worker. The coordinator is shared between sessions in that process;
@@ -44,6 +50,13 @@ downloads, snapshots and the repository. Inspect a new bundle manifest before up
 GitHub Pages builds main through `.github/workflows/pages.yml`. It tests, builds and
 scans before deployment. The deployment job checks the source commit is still main
 to prevent an obsolete queued artifact from becoming the current site.
+
+CI builds once, runs the browser checks against that artifact, then scans it before
+upload. Only Chromium's headless shell is installed for these tests. The public input
+directory permits exactly the two JSON files. The built site permits `index.html`,
+those files under `data/`, and Vite-hashed JavaScript/CSS under `assets/`. Unexpected
+files, hidden entries and symbolic links fail the scan. Adding another asset type
+requires an explicit review and an update to this allowlist.
 
 ## Recovery
 

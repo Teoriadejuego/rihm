@@ -79,7 +79,13 @@ fetch_survey_once <- function(survey_id, request = qualtRics::fetch_survey) {
   )
 }
 
-download_surveys_once <- function(config, credentials = NULL) {
+assert_operation_active <- function(check_active) {
+  active <- tryCatch(is.function(check_active) && isTRUE(check_active()), error = function(error) FALSE)
+  if (!active) stop("The operation was cancelled or its permission expired.", call. = FALSE)
+  invisible(TRUE)
+}
+
+download_surveys_once <- function(config, credentials = NULL, check_active = function() TRUE) {
   supplied <- !is.null(credentials)
   if (supplied) {
     validate_qualtrics_credentials(credentials)
@@ -98,10 +104,15 @@ download_surveys_once <- function(config, credentials = NULL) {
     load_qualtrics_environment(config$project_root)
   }
   download <- function() {
+    assert_operation_active(check_active)
     reference <- fetch_survey_once(config$qualtrics$reference_survey_id)
     reference_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    # The active HTTP/export request is allowed to finish and clean up. A
+    # revoked operation must not start the next independent download.
+    assert_operation_active(check_active)
     class <- fetch_survey_once(config$qualtrics$class_survey_id)
     class_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    assert_operation_active(check_active)
     list(reference = reference, class = class, downloaded_at_utc = class_at,
       reference_source_at_utc = reference_at, class_source_at_utc = class_at,
       export_time_zone = "UTC")

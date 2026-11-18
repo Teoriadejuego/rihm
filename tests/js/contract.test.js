@@ -2,7 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { validateResults, validateManifest } from '../../student/src/contract.js';
 import { createModel, difference, valueLabel } from '../../student/src/model.js';
 import { fixture, emptyFixture, bundle, protect } from './fixtures.js';
+import producerCases from './r-percentage-cases.json';
 describe('public aggregate contracts', () => {
+  it.each(producerCases.cases)('accepts the independent R percentage $count/$denominator = $percentage ($case)', (sample) => {
+    const data = fixture();
+    for (const name of ['cells', 'matrix_cells']) {
+      Object.assign(data[name][0], { count: sample.count, denominator_n: sample.denominator, percentage: sample.percentage });
+      if (name === 'cells') Object.assign(data[name][0], { n_consistent: sample.denominator, n_complete: sample.denominator + 11 });
+    }
+    expect(validateResults(data)).toBe(data);
+    data.cells[0].percentage = sample.percentage + 0.1;
+    expect(() => validateResults(data)).toThrow(/percentage does not match/);
+  });
   it('accepts the unchanged legacy unpublished snapshot', () => { const data = emptyFixture(); expect(validateResults(data)).toBe(data); expect(validateManifest(bundle(data).manifest)).toBeDefined(); });
   it('reads populated legacy and current formats', () => { expect(validateResults(fixture({ version: '1.0.0' }))).toBeDefined(); expect(validateResults(fixture())).toBeDefined(); });
   it('accepts the producer data mode for a real aggregate', () => { const data = fixture(); data.metadata.data_mode = 'qualtrics'; delete data.metadata.data_note; expect(validateResults(data)).toBeDefined(); });

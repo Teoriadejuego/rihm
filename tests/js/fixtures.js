@@ -1,4 +1,15 @@
 import { createHash } from 'node:crypto';
+// These synthetic samples use integer-ratio rounding with ties to even. The
+// separate r-percentage-cases.json is the independent producer oracle, including
+// floating-point edge cases that this synthetic sample generator does not use.
+function fixturePercentage(count, denominator) {
+  const scaled = BigInt(count) * 1000n;
+  const divisor = BigInt(denominator);
+  const digit = scaled / divisor;
+  const remainder = scaled % divisor;
+  const increment = remainder * 2n > divisor || (remainder * 2n === divisor && digit % 2n === 1n);
+  return Number(digit + (increment ? 1n : 0n)) / 10;
+}
 export function fixture({ id = 'demo-browser-1', seed = 1, version = '2.0.0' } = {}) {
   const metadata = { schema_version: version, publication_id: id, generated_at_utc: '2026-11-17T10:00:00Z', source_snapshot_at_utc: '2026-11-17T09:00:00Z', minimum_cell_size: 5, classification_note: 'Synthetic fixture using overlapping original indicators.', data_mode: 'demonstration', data_note: 'Synthetic data only; no real participants.' };
   if (version === '2.0.0') Object.assign(metadata, { window_start_utc: '2020-03-04T08:00:00Z', window_end_utc: '2020-03-04T09:00:00Z', selection_rule: 'latest_response_hour', classification_version: 'original-1.0.0', privacy_version: 'linked-1.0.0', content_fingerprint: 'a'.repeat(64), class_source_at_utc: '2026-11-17T09:00:00Z', reference_source_at_utc: '2026-11-17T08:00:00Z' });
@@ -15,9 +26,9 @@ export function fixture({ id = 'demo-browser-1', seed = 1, version = '2.0.0' } =
     for (const behaviour of [...Object.keys(conditions), 'inconsistent']) {
       const count = behaviour === 'inconsistent' ? inconsistent : rows.filter(conditions[behaviour]).reduce((sum, p) => sum + p.count, 0);
       const denominator_n = behaviour === 'inconsistent' ? n + inconsistent : n;
-      cells.push({ scope: group.scope, country: group.country, gender, behaviour, count, denominator_n, percentage: Math.round(1000 * count / denominator_n) / 10, denominator_type: behaviour === 'inconsistent' ? 'complete' : 'consistent', n_complete: n + inconsistent, n_consistent: n, suppressed: false });
+      cells.push({ scope: group.scope, country: group.country, gender, behaviour, count, denominator_n, percentage: fixturePercentage(count, denominator_n), denominator_type: behaviour === 'inconsistent' ? 'complete' : 'consistent', n_complete: n + inconsistent, n_consistent: n, suppressed: false });
     }
-    for (const row of rows) matrix_cells.push({ scope: group.scope, country: group.country, gender, ...row, denominator_n: n, percentage: Math.round(1000 * row.count / n) / 10, suppressed: false });
+    for (const row of rows) matrix_cells.push({ scope: group.scope, country: group.country, gender, ...row, denominator_n: n, percentage: fixturePercentage(row.count, n), suppressed: false });
   }
   return { metadata, cells, matrix_cells };
 }

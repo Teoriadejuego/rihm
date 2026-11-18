@@ -24,7 +24,8 @@ config_result <- tryCatch(list(value = read_app_config(project_root), error = NU
 # I(1) forces a separate process instead of future's single-worker sequential
 # fallback. This is one compute worker shared by all sessions, not one per user.
 future::plan(future::multisession, workers = I(1L))
-teacher_coordinator <- make_teacher_coordinator(cooldown_seconds = 180)
+teacher_shared <- make_teacher_reactive_coordinator(cooldown_seconds = 180)
+teacher_coordinator <- teacher_shared$coordinator
 teacher_panel_ui <- teacher_panel_layout()
 ui <- fluidPage(
   theme = bs_theme(version = 5, primary = "#096b67", bg = "#edf3f6", fg = "#213746"),
@@ -49,13 +50,19 @@ server <- function(input, output, session) {
   presenting <- reactiveVal(FALSE)
   pinned <- reactiveVal(NULL)
   slides <- teacher_slides()
+  restore_pending <- reactiveVal(FALSE)
+  restore_revision <- reactiveVal(0L)
+  send_controls <- make_teacher_control_sender(session$sendCustomMessage)
 
-  shared <- reactive({ invalidateLater(1000, session); teacher_coordinator$state() })
+  shared <- teacher_shared$state
+  public_snapshot <- teacher_shared$snapshot
+  cooldown <- teacher_shared$cooldown(session)
   signed_in <- function() lifecycle$alive && isTRUE(isolate(authenticated()))
   clear_private <- function() {
     candidate(NULL)
     presenting(FALSE)
     pinned(NULL)
+    restore_pending(FALSE)
     teacher_coordinator$cancel(owner)
   }
   session$onSessionEnded(function() {
@@ -64,8 +71,13 @@ server <- function(input, output, session) {
   })
 
   fail_operation <- function(kind, id) {
+    job <- teacher_coordinator$state()$job
+    cancelled <- !is.null(job) && identical(job$id, id) && isTRUE(job$cancelled)
+    expired <- !is.null(job) && identical(job$id, id) && !teacher_permission_valid(job$cancellation)
     message <- if (identical(kind, "publish"))
       "Publication could not be confirmed. Reload the published snapshot before trying again; the student site keeps its last successful deployment."
+    else if (cancelled) "The operation was cancelled. Previously confirmed results remain available."
+    else if (expired) "The operation permission expired. Start a new update when ready."
     else "The operation could not finish. Check the configured connections and try again; the published snapshot was not replaced."
     teacher_coordinator$finish(id, message)
     if (signed_in()) status(message)
@@ -111,11 +123,12 @@ server <- function(input, output, session) {
     # ExtendedTask queues this invocation until its current promise settles.
     # No reactive observer is needed to hand off the still-locked operation.
     operation$invoke("publish", config_result$value, id,
-      results = value$candidate$results, permission = permission)
+      results = value$candidate$results, permission = permission,
+      cancellation = teacher_coordinator$cancellation(id, owner))
     invisible(NULL)
   }
 
-  operation <- shiny::ExtendedTask$new(function(kind, config, id, results = NULL, permission = NULL) {
+  operation <- shiny::ExtendedTask$new(function(kind, config, id, results = NULL, permission = NULL, cancellation = NULL) {
     promise <- promises::future_promise({
       if (.Platform$OS.type == "windows" && !isTRUE(l10n_info()[["UTF-8"]])) {
         invisible(Sys.setlocale("LC_CTYPE", "English_United States.utf8"))
@@ -123,8 +136,9 @@ server <- function(input, output, session) {
       source(file.path(config$project_root, "R", "load_all.R"), local = TRUE, encoding = "UTF-8")
       source_project_modules(config$project_root)
       if (!exists("teacher_operation_worker", mode = "function")) source(file.path(config$project_root, "R", "teacher_coordinator.R"), encoding = "UTF-8")
-      teacher_operation_worker(kind, config, results, permission)
-    }, globals = list(kind = kind, config = config, results = results, permission = permission), seed = TRUE)
+      teacher_operation_worker(kind, config, results, permission, cancellation)
+    }, globals = list(kind = kind, config = config, results = results, permission = permission,
+      cancellation = cancellation), seed = TRUE)
     shiny::withReactiveDomain(NULL, promises::then(promise,
       onFulfilled = function(value) {
         tryCatch(shiny::isolate(complete_value(kind, id, value)),
@@ -138,33 +152,46 @@ server <- function(input, output, session) {
     ))
   })
 
-  start_operation <- function(kind) {
+  start_operation <- function(kind, user_action = FALSE) {
     req(authenticated())
+    if (isTRUE(user_action)) last_activity(as.numeric(Sys.time()))
     if (is.null(config_result$value)) {
       status(config_result$error)
       return(invisible(FALSE))
     }
-    id <- tryCatch(teacher_coordinator$begin(owner, kind, authenticated()), error = function(error) error)
+    id <- tryCatch(teacher_coordinator$begin(owner, kind, authenticated(),
+      expires_at = last_activity() + 899), error = function(error) error)
     if (inherits(id, "error")) {
       status(conditionMessage(id))
       return(invisible(FALSE))
     }
     operation_id(id)
     phase(kind)
+    if (kind == "refresh") restore_pending(FALSE)
     if (kind %in% c("update", "demo")) candidate(NULL)
     status(if (kind == "update") "Downloading both surveys and preparing the latest group."
       else if (kind == "demo") "Preparing a synthetic preview. This cannot publish to the student site."
       else "Reading the current published snapshot.")
-    operation$invoke(kind, config_result$value, id)
+    operation$invoke(kind, config_result$value, id,
+      cancellation = teacher_coordinator$cancellation(id, owner))
     invisible(TRUE)
   }
 
   observeEvent(authenticated(), {
+    send_controls(reset = TRUE)
     if (isTRUE(authenticated())) {
       last_activity(as.numeric(Sys.time()))
-      if (!teacher_coordinator$state()$busy) start_operation("refresh")
+      restore_revision(teacher_coordinator$state()$confirmed_revision)
+      restore_pending(TRUE)
     } else clear_private()
-  }, ignoreNULL = FALSE)
+  }, ignoreNULL = FALSE, priority = 100)
+  observe({
+    action <- teacher_restore_action(restore_pending(), authenticated(), shared(), restore_revision())
+    if (action == "reuse") {
+      restore_pending(FALSE)
+      status("The latest student snapshot was already verified by another operation.")
+    } else if (action == "refresh") start_operation("refresh")
+  })
   observe({
     invalidateLater(1000, session)
     if (!isTRUE(authenticated())) clear_private()
@@ -174,9 +201,9 @@ server <- function(input, output, session) {
     if (isTRUE(authenticated())) last_activity(as.numeric(Sys.time()))
   }, priority = -1100)
 
-  observeEvent(input$update_publish, start_operation("update"))
-  observeEvent(input$refresh_latest, start_operation("refresh"))
-  observeEvent(input$load_demo, start_operation("demo"))
+  observeEvent(input$update_publish, start_operation("update", user_action = TRUE))
+  observeEvent(input$refresh_latest, start_operation("refresh", user_action = TRUE))
+  observeEvent(input$load_demo, start_operation("demo", user_action = TRUE))
   observeEvent(input$cancel_operation, {
     req(authenticated())
     if (teacher_coordinator$cancel(owner)) status("Cancellation requested. An already completed commit will still be reconciled.")
@@ -185,10 +212,7 @@ server <- function(input, output, session) {
   observe({
     req(authenticated())
     state <- shared()
-    session$sendCustomMessage("teacher-controls", list(
-      update_publish = !state$busy && state$cooldown_remaining == 0L && !is.null(config_result$value),
-      refresh_latest = !state$busy, load_demo = !state$busy,
-      cancel_operation = state$busy && identical(state$job$owner, owner) && !isTRUE(state$job$cancelled)))
+    send_controls(teacher_control_state(state, cooldown(), owner, configured = !is.null(config_result$value)))
   })
 
   output$student_link <- renderUI({
@@ -206,13 +230,13 @@ server <- function(input, output, session) {
   })
   output$operation_status <- renderText({ req(authenticated()); state <- shared(); if (state$busy) state$job$phase else status() })
   output$cooldown_status <- renderText({
-    req(authenticated()); remaining <- shared()$cooldown_remaining
+    req(authenticated()); remaining <- cooldown()
     if (remaining > 0L) paste("Next real update in", remaining, "seconds.") else "The shared update cooldown has ended."
   })
-  output$latest_summary <- renderUI({ req(authenticated()); teacher_snapshot_summary(shared()$latest) })
-  output$latest_bars <- renderUI({ req(authenticated()); teacher_group_bars(shared()$latest) })
-  output$latest_behaviours <- renderTable({ req(authenticated()); teacher_table_preview(shared()$latest, "cells") }, striped = TRUE)
-  output$latest_matrix <- renderTable({ req(authenticated()); teacher_table_preview(shared()$latest, "matrix_cells") }, striped = TRUE)
+  output$latest_summary <- renderUI({ req(authenticated()); teacher_snapshot_summary(public_snapshot()) })
+  output$latest_bars <- renderUI({ req(authenticated()); teacher_group_bars(public_snapshot()) })
+  output$latest_behaviours <- renderTable({ req(authenticated()); teacher_table_preview(public_snapshot(), "cells") }, striped = TRUE)
+  output$latest_matrix <- renderTable({ req(authenticated()); teacher_table_preview(public_snapshot(), "matrix_cells") }, striped = TRUE)
   output$candidate_summary <- renderUI({
     req(authenticated()); value <- candidate()
     if (is.null(value)) return(p("No candidate has been prepared in this session."))
@@ -240,7 +264,7 @@ server <- function(input, output, session) {
   observeEvent(input$stop_presentation, {
     req(authenticated()); presenting(FALSE); pinned(NULL); session$sendCustomMessage("teacher-exit-fullscreen", list())
   })
-  projected <- reactive({ req(authenticated()); if (presenting()) pinned() else shared()$latest })
+  projected <- reactive({ req(authenticated()); if (presenting()) pinned() else public_snapshot() })
   output$slide_position <- renderUI({ req(authenticated()); span(paste("Slide", slide(), "of", length(slides))) })
   output$projection_slide <- renderUI({
     req(authenticated()); item <- slides[[slide()]]

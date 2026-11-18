@@ -160,6 +160,7 @@ testthat::test_that("the real async panel keeps demonstrations private and clear
     session$setInputs(`teacher_login-user_id` = "fixture",
       `teacher_login-user_pwd` = "Test-only-panel-password-12345", `teacher_login-go_auth` = 1)
     testthat::expect_true(authenticated())
+    restore_pending(FALSE) # Restoration has its own mocked tests below.
     coordinator$finish(hold, "Read restoration held for isolated test")
     session$setInputs(load_demo = 1)
     wait_complete()
@@ -185,6 +186,7 @@ testthat::test_that("the real async panel keeps demonstrations private and clear
     testthat::expect_false(coordinator$state()$busy)
     hold_again <- coordinator$begin("test-hold", "demo", TRUE)
     session$setInputs(`teacher_login-user_pwd` = "Test-only-panel-password-12345", `teacher_login-go_auth` = 2)
+    restore_pending(FALSE)
     coordinator$finish(hold_again, "Read restoration held for isolated test")
     session$setInputs(load_demo = 3)
     testthat::expect_true(coordinator$state()$busy)

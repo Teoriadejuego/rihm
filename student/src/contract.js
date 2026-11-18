@@ -11,6 +11,20 @@ const nullableInteger = (v) => v === null || integer(v);
 const assert = (condition, message) => { if (!condition) throw new ContractError(message); };
 const allowed = (value, names) => Object.keys(value).every((key) => names.includes(key));
 
+// Match the producer's round(100 * count / denominator, 1): choose the
+// nearest represented decimal neighbour, with ties to the even digit.
+// Comparing distances also preserves R's behaviour just below decimal ties
+// (for example the binary representation of 100 * 43 / 2000 is below 2.15).
+function producerPercentage(count, denominator) {
+  const value = 100 * count / denominator;
+  const digit = Math.floor(value * 10);
+  const lower = digit / 10;
+  const upper = (digit + 1) / 10;
+  const below = value - lower;
+  const above = upper - value;
+  return above < below || (above === below && digit % 2 === 1) ? upper : lower;
+}
+
 export class ContractError extends Error { constructor(message) { super(message); this.name = 'ContractError'; } }
 
 export function validateManifest(value) {
@@ -64,7 +78,7 @@ export function validateResults(value) {
         assert(integer(row.count) && integer(row.denominator_n) && row.denominator_n > 0 && row.count <= row.denominator_n, 'Invalid aggregate counts.');
         assert(row.count >= m.minimum_cell_size && row.denominator_n - row.count >= m.minimum_cell_size, 'The snapshot contains an unprotected small value.');
         assert(Number.isFinite(row.percentage) && row.percentage >= 0 && row.percentage <= 100, 'Invalid percentage.');
-        assert(Math.abs(row.percentage - Math.round(1000 * row.count / row.denominator_n) / 10) < 0.000001, 'The published percentage does not match its counts.');
+        assert(Math.abs(row.percentage - producerPercentage(row.count, row.denominator_n)) < 0.000001, 'The published percentage does not match its counts.');
         if (!isMatrix) assert(nullableInteger(row.n_complete) && nullableInteger(row.n_consistent), 'Invalid sample sizes.');
       }
       if (isMatrix) assert([1, 2, 3, 4].includes(row.compassion_level) && [1, 2, 3, 4].includes(row.envy_level), 'Invalid matrix position.');

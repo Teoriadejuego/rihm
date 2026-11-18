@@ -68,10 +68,13 @@ npm ci
 Rscript scripts/run_tests.R
 npm test
 Rscript scripts/render_site.R
+npx playwright install --only-shell chromium
+npm run test:e2e:built
 Rscript scripts/scan_public.R
-npx playwright install chromium
-npm run test:e2e
 ```
+
+`npm run test:e2e` remains a convenient build-and-test command. Use
+`test:e2e:built` after a separate build to test that exact artifact without rebuilding.
 
 `package-lock.json` pins JavaScript versions. `renv.lock` records the R dependency
 graph; use `renv::restore()` in an isolated library to reproduce it. To update that
@@ -124,4 +127,5 @@ inventing a response interval. Invalid or mismatched new content never replaces
 the last valid browser view.
 
 See the [approved plan](docs/rebuild-plan.md), [twenty specialist prompts](docs/senior-prompts/README.md)
-and [implementation evidence](docs/implementation-status.md).
+and [implementation evidence](docs/implementation-status.md). The latest measured
+improvements are recorded in [optimization results](docs/optimization-results.md).

@@ -51,14 +51,14 @@ jobs:
       - name: Render static dashboard
         run: Rscript scripts/render_site.R
 
-      - name: Scan public artifact for private fields
-        run: Rscript scripts/scan_public.R
-
       - name: Install browser for end-to-end checks
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
 
       - name: Check student browser flows
-        run: npm run test:e2e
+        run: npm run test:e2e:built
+
+      - name: Scan the tested public artifact for private fields
+        run: Rscript scripts/scan_public.R
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

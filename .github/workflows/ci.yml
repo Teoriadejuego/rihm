@@ -24,14 +24,15 @@ jobs:
           cache: npm
       - name: Install locked JavaScript dependencies
         run: npm ci
-      - name: Test, build and scan
+      - name: Test and build
         run: |
           Rscript scripts/run_tests.R
           npm test
           Rscript scripts/render_site.R
-          Rscript scripts/scan_public.R
       - name: Install browser for end-to-end checks
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Check student browser flows
-        run: npm run test:e2e
+        run: npm run test:e2e:built
+      - name: Scan the tested public artifact
+        run: Rscript scripts/scan_public.R
 

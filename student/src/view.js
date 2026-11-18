@@ -78,28 +78,62 @@ function differenceChart(model) {
   const axis = el('div', 'difference-axis'); axis.setAttribute('aria-hidden', 'true'); axis.append(el('span', '', '−100 pp'), el('span', '', '0'), el('span', '', '+100 pp')); section.append(axis); return section;
 }
 function comparisonTable(model) {
-  const details = el('details', 'comparison-details'); details.id = 'comparisonDetails'; details.append(el('summary', '', 'Compare the exact counts and denominators'));
+  const details = el('details', 'comparison-details'); details.id = 'comparisonDetails'; const summary = el('summary', '', 'Compare the exact counts and denominators'); summary.id = 'comparisonSummary'; details.append(summary);
   const { table, body } = dataTable(['Indicator', 'Group count / n', 'Group %', 'Reference count / n', 'Reference %', 'Group − reference', 'Denominator'], 'All displayed values come from the published aggregate. pp means percentage points.'); table.id = 'comparisonTable';
   for (const name of [...model.selected, 'inconsistent']) {
     const g = model.cell('class', name), r = model.cell('international', name), row = el('tr'), th = el('th', '', LABELS[name]); th.scope = 'row'; row.append(th);
     for (const text of [visible(g) ? `${countLabel(g.count)} / ${countLabel(g.denominator_n)}` : g ? 'Protected' : 'Unavailable', valueLabel(g), visible(r) ? `${countLabel(r.count)} / ${countLabel(r.denominator_n)}` : r ? 'Protected' : 'Unavailable', valueLabel(r), pp(difference(g, r)), name === 'inconsistent' ? 'Complete binary' : 'Consistent']) row.append(el('td', '', text)); body.append(row);
   }
-  const scroll = el('div', 'table-scroll'); scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Scrollable comparison table'); scroll.append(table); details.append(scroll); return details;
+  const scroll = el('div', 'table-scroll'); scroll.id = 'comparisonScroll'; scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Scrollable comparison table'); scroll.append(table); details.append(scroll); return details;
 }
 function publicationDetails(m) {
-  const details = el('details', 'publication-details'); details.id = 'publicationDetails'; details.append(el('summary', '', 'Publication and method details')); const dl = el('dl', 'publication-list');
+  const details = el('details', 'publication-details'); details.id = 'publicationDetails'; const summary = el('summary', '', 'Publication and method details'); summary.id = 'publicationSummary'; details.append(summary); const dl = el('dl', 'publication-list');
   for (const [label, value] of [['Publication', m.publication_id], ['Published', dateLabel(m.generated_at_utc)], ['Format', m.schema_version], ['Group source downloaded', m.class_source_at_utc ? dateLabel(m.class_source_at_utc) : m.source_snapshot_at_utc ? dateLabel(m.source_snapshot_at_utc) : 'Not available'], ['Reference source downloaded', m.reference_source_at_utc ? dateLabel(m.reference_source_at_utc) : 'Not available in this publication'], ['Classification', m.classification_version || 'Original classification (legacy format)'], ['Privacy method', m.privacy_version || 'Original suppression (legacy format)'], ['Protection threshold', `${m.minimum_cell_size}`], ['Content fingerprint', m.content_fingerprint || 'Not available in this publication']]) dl.append(el('dt', '', label), el('dd', '', value));
   details.append(dl); return details;
 }
+function comparisonMessage(state) {
+  if (state.error) return 'Comparisons are unavailable until a verified publication can be loaded. Use Check for updates to try again.';
+  return state.snapshot ? 'Comparisons will appear here after the researcher publishes a protected group aggregate.' : 'Comparisons will appear here once the latest publication has been verified.';
+}
+function emptyComparison(state) {
+  const section = el('section', 'difference-chart'); section.id = 'compare'; section.setAttribute('aria-labelledby', 'differenceHeading');
+  const heading = el('h3', '', 'Where the samples differ'); heading.id = 'differenceHeading';
+  const message = el('p', '', comparisonMessage(state)); message.id = 'emptyComparisonMessage';
+  section.append(heading, message); return section;
+}
+// Updating operational status never replaces the data view or its controls.
+export function updateViewStatus(root, state) {
+  const status = root.querySelector('#dataStatus');
+  const message = state.checking ? 'Checking the latest publication…' : state.error ? state.snapshot ? 'Update unavailable. The last verified publication remains on screen.' : 'The publication could not be loaded. Try checking again.' : state.snapshot?.data.cells.length ? `Publication checked ${state.checkedAt ? new Intl.DateTimeFormat('en-GB', { timeStyle: 'short' }).format(state.checkedAt) : 'now'}. Checks repeat every minute while this page is visible.` : 'Ready for results. The researcher has not published a group yet.';
+  if (status.textContent !== message) status.textContent = message;
+  const statusClass = state.error ? 'status warning' : 'status';
+  if (status.className !== statusClass) status.className = statusClass;
+  const refresh = root.querySelector('#refreshButton');
+  const refreshText = state.checking ? 'Checking…' : 'Check for updates';
+  if (refresh.textContent !== refreshText) refresh.textContent = refreshText;
+  refresh.setAttribute('aria-disabled', String(state.checking));
+  const error = root.querySelector('#initialLoadError');
+  if (error) {
+    const errorText = state.error || '';
+    if (error.textContent !== errorText) error.textContent = errorText;
+    error.hidden = !state.error;
+  }
+  const placeholder = root.querySelector('#emptyComparisonMessage');
+  if (placeholder && placeholder.textContent !== comparisonMessage(state)) placeholder.textContent = comparisonMessage(state);
+}
 export function createView(state, selection, actions) {
-  const fragment = document.createDocumentFragment(), update = el('div', 'update-strip'), status = el('p', state.error ? 'status warning' : 'status'); status.id = 'dataStatus'; status.setAttribute('role', 'status');
-  status.textContent = state.checking ? 'Checking the latest publication…' : state.error ? state.snapshot ? 'Update unavailable. The last verified publication remains on screen.' : 'The publication could not be loaded. Try checking again.' : state.snapshot?.data.cells.length ? `Publication checked ${state.checkedAt ? new Intl.DateTimeFormat('en-GB', { timeStyle: 'short' }).format(state.checkedAt) : 'now'}. Checks repeat every minute while this page is visible.` : 'Ready for results. The researcher has not published a group yet.';
-  const refresh = el('button', 'refresh-button', state.checking ? 'Checking…' : 'Check for updates'); refresh.type = 'button'; refresh.id = 'refreshButton'; refresh.disabled = state.checking; refresh.addEventListener('click', actions.onRefresh); update.append(status, refresh); fragment.append(update);
-  if (!state.snapshot) { if (state.error) fragment.append(el('p', 'error-detail', state.error)); return fragment; }
+  const fragment = document.createDocumentFragment(), update = el('div', 'update-strip'), status = el('p', 'status'); status.id = 'dataStatus'; status.setAttribute('role', 'status');
+  const refresh = el('button', 'refresh-button'); refresh.type = 'button'; refresh.id = 'refreshButton';
+  refresh.addEventListener('click', () => { if (refresh.getAttribute('aria-disabled') !== 'true') actions.onRefresh(); }); update.append(status, refresh); fragment.append(update);
+  if (!state.snapshot) {
+    const error = el('p', 'error-detail'); error.id = 'initialLoadError'; error.hidden = true;
+    fragment.append(error, emptyComparison(state)); updateViewStatus(fragment, state); return fragment;
+  }
+  updateViewStatus(fragment, state);
   const data = state.snapshot.data, m = data.metadata;
   if (m.data_mode === 'demonstration') { const notice = el('aside', 'demo-notice'); notice.id = 'demoNotice'; notice.append(el('strong', '', 'Synthetic demonstration'), el('span', '', 'Generated examples for testing. These results do not describe real people, countries or genders.')); fragment.append(notice); }
   const publication = el('div', 'publication-strip'); publication.id = 'publicationMeta'; publication.append(el('span', '', `Published ${dateLabel(m.generated_at_utc)}`), el('span', 'publication-id', m.publication_id)); fragment.append(publication);
-  if (!data.cells.length) { fragment.append(el('div', 'empty-results', 'The game and methods are available now. Group comparisons will appear here after a protected aggregate is published.')); return fragment; }
+  if (!data.cells.length) { fragment.append(el('div', 'empty-results', 'The game and methods are available now. Group comparisons will appear here after a protected aggregate is published.'), emptyComparison(state)); return fragment; }
   const model = createModel(data, selection); selection.country = model.country;
   const groupWindow = el('div', 'group-window'); groupWindow.id = 'groupWindow';
   if (m.schema_version === '2.0.0') groupWindow.append(el('strong', '', 'Latest recorded group'), el('span', '', `${dateLabel(m.window_start_utc)} to ${dateLabel(m.window_end_utc)}`), el('p', '', 'The hour ending at the latest recorded response in the downloaded data. Historical responses keep their original window; this is not the hour before you opened the page.'));

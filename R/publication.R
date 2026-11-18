@@ -39,11 +39,30 @@ scan_public_files <- function(project_root, secrets = character()) {
     file.path(project_root, "student", "data"),
     file.path(project_root, "student", "_site")
   )
-  files <- unlist(lapply(roots[file.exists(roots)], function(root) {
-    list.files(root, recursive = TRUE, full.names = TRUE)
-  }), use.names = FALSE)
-  text_extensions <- c("json", "html", "js", "css", "xml", "txt", "csv")
-  files <- files[tolower(tools::file_ext(files)) %in% text_extensions]
+  files <- character()
+  public_json <- c("public_results.json", "public_manifest.json")
+  for (index in seq_along(roots)) {
+    root <- roots[[index]]
+    if (!dir.exists(root)) next
+    # Inspect every entry, including hidden files and directories. Silently
+    # dropping unknown extensions would allow unreviewed exports into Pages.
+    entries <- list.files(root, recursive = TRUE, full.names = FALSE,
+      all.files = TRUE, include.dirs = TRUE, no.. = TRUE)
+    paths <- file.path(root, entries)
+    directories <- file.info(paths)$isdir
+    links <- Sys.readlink(paths)
+    allowed <- if (index == 1L) {
+      !directories & entries %in% public_json
+    } else {
+      (directories & entries %in% c("assets", "data")) |
+        (!directories & (entries %in% c("index.html", paste0("data/", public_json)) |
+          grepl("^assets/[A-Za-z0-9][A-Za-z0-9._-]*-[A-Za-z0-9_-]{8,}\\.(js|css)$", entries)))
+    }
+    if (anyNA(allowed) || any(!allowed) || any(!is.na(links) & nzchar(links))) {
+      stop("Privacy scan failed: unexpected public file or directory.", call. = FALSE)
+    }
+    files <- c(files, paths[!directories])
+  }
   if (!length(files)) stop("No public files were found to scan.", call. = FALSE)
 
   forbidden <- c(

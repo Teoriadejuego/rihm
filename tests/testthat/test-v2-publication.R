@@ -88,6 +88,48 @@ testthat::test_that("teacher restoration verifies exact bytes and retries mixed 
   testthat::expect_length(transport$calls(), 6L)
 })
 
+testthat::test_that("deployment polling downloads results only after the expected manifest appears", {
+  target <- v2_test_results()
+  pair <- pages_test_pair(target)
+  old <- pages_test_pair(v2_previous())
+  transport <- pages_test_transport(list(old$manifest, old$manifest, pair$manifest, pair$results))
+  testthat::expect_true(verify_v2_deployment(pages_test_config()$publication$pages_base_url, target,
+    timeout_seconds = 5L, poll_seconds = 0L, request = transport$request))
+  calls <- transport$calls()
+  testthat::expect_length(calls, 4L)
+  testthat::expect_equal(sum(grepl("/public_manifest.json[?]", calls)), 3L)
+  testthat::expect_equal(sum(grepl("/public_results.json[?]", calls)), 1L)
+})
+
+testthat::test_that("deployment polling rejects mismatching identity, time or hash before fetching results", {
+  expected <- public_manifest(v2_test_results())
+  for (field in c("publication_id", "generated_at_utc", "results_sha256")) {
+    other <- expected
+    other[[field]] <- switch(field, publication_id = "older-publication",
+      generated_at_utc = "2026-01-01T12:00:00Z", results_sha256 = strrep("0", 64L))
+    bytes <- charToRaw(as.character(jsonlite::toJSON(other, auto_unbox = TRUE)))
+    transport <- pages_test_transport(rep(list(bytes), 3L))
+    testthat::expect_error(get_current_published_results(pages_test_config(), request = transport$request,
+      expected_manifest = expected), "could not be verified")
+    testthat::expect_length(transport$calls(), 3L)
+    testthat::expect_true(all(grepl("/public_manifest.json[?]", transport$calls())))
+  }
+})
+
+testthat::test_that("a matching deployment manifest still requires exact bytes and safe aggregate data", {
+  target <- v2_test_results()
+  pair <- pages_test_pair(target)
+  transport <- pages_test_transport(list(pair$manifest, c(pair$results, charToRaw(" "))))
+  testthat::expect_error(get_current_published_results(pages_test_config(), request = transport$request,
+    max_attempts = 1L, expected_manifest = public_manifest(target)), "could not be verified")
+  testthat::expect_length(transport$calls(), 2L)
+  target$cells$count[[1L]] <- 1L
+  target$metadata$content_fingerprint <- public_content_fingerprint(target)
+  transport <- pages_test_transport(pages_test_pair(target))
+  testthat::expect_error(get_current_published_results(pages_test_config(), request = transport$request,
+    max_attempts = 1L, expected_manifest = public_manifest(target)), "could not be verified")
+})
+
 testthat::test_that("teacher restoration supports the explicit legacy bootstrap and published v1 contract", {
   legacy <- v2_test_results()
   legacy$metadata <- legacy$metadata[c("schema_version", "publication_id", "generated_at_utc",

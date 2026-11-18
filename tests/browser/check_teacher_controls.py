@@ -34,6 +34,7 @@ def main():
         page.locator('a[data-value="Update"]').click()
         update = page.locator("#update_publish")
         cooldown = page.locator("#cooldown_status")
+        expect(cooldown).to_contain_text(re.compile("Next real update in|cooldown has ended"), timeout=10000)
         if "Next real update in" in cooldown.inner_text():
             expect(update).to_be_disabled()
             print("COOLDOWN_DISABLED_PASS", flush=True)
@@ -78,6 +79,24 @@ def main():
         # Deliberately do not click update: no Qualtrics download or publication.
         page.locator("#teacher_logout").click()
         page.locator("#teacher_login-user_id").wait_for()
+
+        # A new authenticated UI must receive controls even when their values
+        # match the previous login's cached message.
+        STAGE = "RELOGIN_CONTROLS"
+        page.locator("#teacher_login-user_id").fill(settings["TEACHER_USERNAME"])
+        page.locator("#teacher_login-user_pwd").fill(settings["TEACHER_PASSWORD"])
+        page.locator("#teacher_login-user_pwd").press("Tab")
+        page.wait_for_timeout(500)
+        page.locator("#teacher_login-go_auth").click()
+        page.locator('a[data-value="Latest group"]').wait_for(timeout=15000)
+        page.locator('a[data-value="Latest group"]').click()
+        expect(page.locator("#refresh_latest")).to_be_enabled(timeout=45000)
+        page.screenshot(path=str(ROOT / "staging" / "optimized-teacher.png"), full_page=True)
+        page.locator('a[data-value="Update"]').click()
+        expect(page.locator("#update_publish")).to_be_enabled(timeout=5000)
+        print("RELOGIN_CONTROLS_PASS", flush=True)
+        page.locator("#teacher_logout").click()
+        page.locator("#teacher_login-user_id").wait_for()
         assert not errors
         browser.close()
 
@@ -85,7 +104,11 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception as error:
         # Playwright exception text can contain filled input values.
-        print(f"TEACHER_CONTROLS_BROWSER_FAILED_AT_{STAGE}; no credential values logged.", flush=True)
+        import traceback
+        frames = [frame for frame in traceback.extract_tb(error.__traceback__)
+                  if Path(frame.filename).resolve() == Path(__file__).resolve()]
+        line = frames[-1].lineno if frames else "unknown"
+        print(f"TEACHER_CONTROLS_BROWSER_FAILED_AT_{STAGE}; line={line}; type={type(error).__name__}; no credential values logged.", flush=True)
         sys.exit(1)

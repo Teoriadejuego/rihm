@@ -20,6 +20,43 @@ describe('verified snapshot loading', () => {
   it('surfaces HTTP errors without contacting a second origin', async () => { const fetcher = vi.fn(async () => new Response('', { status: 503 })); await expect(reader(fetcher)()).rejects.toThrow(/503/); expect(fetcher).toHaveBeenCalledTimes(1); expect(fetcher.mock.calls[0][0].origin).toBe('https://example.test'); });
   it('aborts a request after its deadline', async () => { vi.useFakeTimers(); const fetcher = vi.fn((url, options) => new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new Error('Timed out'))))); const promise = reader(fetcher, { timeoutMs: 25 })(); const rejection = expect(promise).rejects.toThrow(/Timed out/); await vi.advanceTimersByTimeAsync(26); await rejection; });
   it('hashes byte differences, including final whitespace', async () => { const b = bundle(); expect(await sha256(new TextEncoder().encode(b.text), webcrypto)).toBe(b.manifest.results_sha256); expect(await sha256(new TextEncoder().encode(b.text + '\n'), webcrypto)).not.toBe(b.manifest.results_sha256); });
+  it.each([undefined, '1'])('cancels an oversized stream with content-length %s before consuming it all', async (declaredLength) => {
+    const b = bundle(); let chunks = 0; let cancelled = false; let signal;
+    const fetcher = vi.fn(async (url, options) => {
+      if (url.pathname.endsWith('manifest.json')) return jsonResponse(b.manifest);
+      signal = options.signal;
+      const stream = new ReadableStream({
+        pull(controller) { if (chunks === 16) controller.close(); else { chunks++; controller.enqueue(new Uint8Array(1024 * 1024)); } },
+        cancel() { cancelled = true; }
+      }, { highWaterMark: 0 });
+      return new Response(stream, { headers: declaredLength ? { 'content-length': declaredLength } : {} });
+    });
+    await expect(reader(fetcher)()).rejects.toThrow(/exceeds the supported size/);
+    expect(chunks).toBe(9); expect(cancelled).toBe(true); expect(signal.aborted).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it('rejects an advertised oversized body before reading any chunks', async () => {
+    const b = bundle(); let pulls = 0; let cancelled = false;
+    const fetcher = vi.fn(async (url) => url.pathname.endsWith('manifest.json') ? jsonResponse(b.manifest) : new Response(new ReadableStream({ pull() { pulls++; }, cancel() { cancelled = true; } }, { highWaterMark: 0 }), { headers: { 'content-length': String(16 * 1024 * 1024) } }));
+    await expect(reader(fetcher)()).rejects.toThrow(/exceeds the supported size/);
+    expect(pulls).toBe(0); expect(cancelled).toBe(true);
+  });
+  it('hashes the unchanged UTF-8 bytes when a multibyte character crosses stream chunks', async () => {
+    const data = fixture(); data.metadata.data_note = 'Café — synthetic data only.';
+    const b = bundle(data), bytes = new TextEncoder().encode(b.text), pivot = bytes.indexOf(0xc3);
+    const chunks = [bytes.slice(0, pivot + 1), bytes.slice(pivot + 1, pivot + 2), bytes.slice(pivot + 2)];
+    const fetcher = vi.fn(async (url) => url.pathname.endsWith('manifest.json') ? jsonResponse(b.manifest) : new Response(new ReadableStream({ pull(controller) { const next = chunks.shift(); if (next) controller.enqueue(next); else controller.close(); } })));
+    const result = await reader(fetcher)();
+    expect(result.data).toEqual(data); expect(result.manifest.results_sha256).toBe(b.manifest.results_sha256);
+  });
+  it('accepts exactly the byte limit and preserves trailing JSON whitespace for the hash', async () => {
+    const b = bundle(); const original = new TextEncoder().encode(b.text);
+    const bytes = new Uint8Array(8 * 1024 * 1024); bytes.fill(32); bytes.set(original);
+    b.manifest.results_sha256 = await sha256(bytes, webcrypto);
+    let offset = 0;
+    const fetcher = vi.fn(async (url) => url.pathname.endsWith('manifest.json') ? jsonResponse(b.manifest) : new Response(new ReadableStream({ pull(controller) { if (offset === bytes.length) controller.close(); else { controller.enqueue(bytes.slice(offset, offset + 65536)); offset += 65536; } } })));
+    expect((await reader(fetcher)()).data).toEqual(b.data);
+  });
 });
 describe('atomic refresh state', () => {
   it('coalesces concurrent checks into one operation', async () => { let release; const read = vi.fn(() => new Promise((r) => { release = r; })), store = createSnapshotStore({ read }); const a = store.check(), b = store.check(); expect(a).toBe(b); await Promise.resolve(); expect(read).toHaveBeenCalledTimes(1); release({ data: fixture(), manifest: bundle().manifest }); await a; });

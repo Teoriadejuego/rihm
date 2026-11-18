@@ -9,14 +9,39 @@ export async function sha256(bytes, cryptoProvider = globalThis.crypto) {
 export function createSnapshotReader({ fetcher = globalThis.fetch, baseUrl = globalThis.document?.baseURI, timeoutMs = 12000, maxAttempts = 3, cryptoProvider = globalThis.crypto } = {}) {
   const root = new URL('.', baseUrl);
   async function request(path) {
+    const maximumBytes = 8 * 1024 * 1024;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetcher(new URL(path, root), { cache: 'no-store', credentials: 'omit', redirect: 'error', signal: controller.signal });
       if (!response.ok) throw new Error(`The published data returned HTTP ${response.status}.`);
-      const bytes = await response.arrayBuffer();
-      if (bytes.byteLength > 8 * 1024 * 1024) throw new ContractError('The aggregate file exceeds the supported size.');
-      return bytes;
+      const declaredLength = response.headers.get('content-length');
+      if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > maximumBytes) {
+        controller.abort();
+        await response.body?.cancel().catch(() => {});
+        throw new ContractError('The aggregate file exceeds the supported size.');
+      }
+      if (!response.body) return new Uint8Array();
+      const reader = response.body.getReader();
+      const chunks = [];
+      let byteLength = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          byteLength += value.byteLength;
+          if (byteLength > maximumBytes) throw new ContractError('The aggregate file exceeds the supported size.');
+          chunks.push(value);
+        }
+        const bytes = new Uint8Array(byteLength);
+        let offset = 0;
+        for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+        return bytes;
+      } catch (error) {
+        controller.abort();
+        await reader.cancel().catch(() => {});
+        throw error;
+      } finally { reader.releaseLock(); }
     } finally { clearTimeout(timeout); }
   }
   function decode(bytes) {

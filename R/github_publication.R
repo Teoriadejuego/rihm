@@ -260,7 +260,8 @@ pages_bytes_request <- function(url) {
   }), error = function(error) stop("The published student snapshot could not be read.", call. = FALSE))
 }
 
-get_current_published_results <- function(config, request = pages_bytes_request, max_attempts = 3L) {
+get_current_published_results <- function(config, request = pages_bytes_request, max_attempts = 3L,
+                                          expected_manifest = NULL) {
   base <- pages_publication_base(config)
   if (!is.numeric(max_attempts) || length(max_attempts) != 1L || !is.finite(max_attempts) ||
       max_attempts < 1 || max_attempts > 3 || max_attempts != as.integer(max_attempts)) {
@@ -288,6 +289,14 @@ get_current_published_results <- function(config, request = pages_bytes_request,
       if (anyDuplicated(names(manifest)) || !setequal(names(manifest), fields) ||
           !github_scalar_text(manifest$publication_id, 120L) ||
           !grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", manifest$publication_id)) stop("Invalid manifest")
+      # Deployment polling needs only the tiny manifest until the requested
+      # publication appears. Compare every identity field and the expected
+      # byte hash before downloading or validating a potentially old result.
+      if (!is.null(expected_manifest) && (!is.list(expected_manifest) ||
+          anyDuplicated(names(expected_manifest)) || !setequal(names(expected_manifest), fields) ||
+          any(!vapply(fields, function(field) identical(manifest[[field]], expected_manifest[[field]]), logical(1))))) {
+        stop("The requested publication is not yet available")
+      }
       bytes <- read_bytes(paste0("/data/public_results.json?publication=", manifest$publication_id))
       if (manifest$schema_version == "2.0.0" &&
           !identical(manifest$results_sha256, unclass(as.character(openssl::sha256(bytes))))) stop("Snapshot checksum mismatch")
@@ -303,15 +312,18 @@ get_current_published_results <- function(config, request = pages_bytes_request,
   stop("The published student snapshot could not be verified; the previous verified snapshot is retained.", call. = FALSE)
 }
 
-verify_v2_deployment <- function(base_url, results, timeout_seconds = 180L, poll_seconds = 5L) {
+verify_v2_deployment <- function(base_url, results, timeout_seconds = 180L, poll_seconds = 5L,
+                                 request = pages_bytes_request) {
   if (!is.character(base_url) || length(base_url) != 1L || !nzchar(base_url)) return(FALSE)
   # Verify the same bytes students read, not only a newer manifest that may
   # briefly coexist with the previous results file during CDN propagation.
   owner <- sub("^https://([^./]+)\\.github\\.io.*$", "\\1", base_url)
   config <- list(publication = list(github_repository = paste0(owner, "/publication"), pages_base_url = base_url))
+  expected <- public_manifest(results)
   deadline <- Sys.time() + as.numeric(timeout_seconds)
   while (Sys.time() < deadline) {
-    published <- tryCatch(get_current_published_results(config, max_attempts = 1L), error = function(error) NULL)
+    published <- tryCatch(get_current_published_results(config, request = request, max_attempts = 1L,
+      expected_manifest = expected), error = function(error) NULL)
     if (!is.null(published) && identical(published$metadata$schema_version, results$metadata$schema_version) &&
         identical(published$metadata$publication_id, results$metadata$publication_id) &&
         identical(published$metadata$generated_at_utc, results$metadata$generated_at_utc) &&
