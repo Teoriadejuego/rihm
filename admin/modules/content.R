@@ -34,7 +34,7 @@ teacher_slides <- function() {
       notes = "The equal allocation remains 10 / 10. Point out that some unequal options change only the recipient's payoff, while others change both. These are the documented task choices; do not alter them during the activity."),
     list(title = "Read a pattern, not a personality", content = tagList(
       p(class = "slide-lead", "The six decisions are interpreted together."),
-      tags$ul(tags$li("Altruist"), tags$li("Egalitarian"), tags$li("Selfish"), tags$li("Antisocial")),
+      tags$ul(tags$li("Altruist — choices favour the recipient and the joint payoff."), tags$li("Egalitarian — choices favour equal payoffs."), tags$li("Selfish — choices favour the decision-maker’s payoff."), tags$li("Antisocial — choices reduce the recipient’s payoff or widen inequality.")),
       p("These indicators can overlap. They are not labels for individuals.")),
       notes = "Explain that the names refer to indicators defined by the original classification rules. One consistent pattern can match more than one indicator. Avoid inviting students to identify classmates."),
     list(title = "Two dimensions beneath the indicators", content = tagList(
@@ -71,9 +71,9 @@ teacher_slides <- function() {
       notes = "Invite competing explanations and explicitly distinguish observation from interpretation. Encourage students to identify additional evidence that would help, without collecting identifiable disclosures in discussion."),
     list(title = "From allocation choices to a discussion", content = tagList(
       tags$ol(tags$li("What did you observe?"), tags$li("Which explanations remain plausible?"),
-        tags$li("Where do equality and efficiency conflict in everyday decisions?")),
+        tags$li("Your team has a bonus to distribute. How would equal shares and individual rewards affect the team?")),
       p("Corgnet, Espín & Hernán-González (2015), Frontiers in Behavioral Neuroscience, 9, 287.")),
-      notes = "Close with a question rather than a ranking. The task comes from The cognitive basis of social behavior: Cognitive reflection overrides antisocial but not always prosocial motives. DOI: 10.3389/fnbeh.2015.00287.")
+      notes = "Open Results QR and project the dashboard link. Invite students to hear two different interpretations before discussing their own. The task comes from The cognitive basis of social behavior: Cognitive reflection overrides antisocial but not always prosocial motives. DOI: 10.3389/fnbeh.2015.00287.")
   )
 }
 

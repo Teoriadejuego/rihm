@@ -106,6 +106,22 @@ def main():
         assert decode(Image.open(BytesIO(qr.screenshot()))) == replacement_url
         assert parse_qs(urlsplit(replacement_url).query) == {'Treatment_choice': [replacement]}
 
+        STAGE = 'student dashboard invitation'
+        tabs = page.locator('#teacher_tabs a[data-value]').evaluate_all('(items) => items.map(a => a.dataset.value)')
+        assert tabs[:5] == ['Project', 'Survey QR', 'Update', 'Teach', 'Results QR']
+        page.locator('a[data-value="Results QR"]').click()
+        results_qr = page.locator('dashboard-qr svg')
+        expect(results_qr).to_be_visible()
+        dashboard_url = settings['PAGES_BASE_URL']
+        assert decode(Image.open(BytesIO(results_qr.screenshot()))) == dashboard_url
+        expect(page.locator('#resultsQrStage a')).to_have_attribute('href', dashboard_url)
+        page.set_viewport_size({'width': 1366, 'height': 768})
+        page.locator('#project_results').click()
+        page.wait_for_function('document.fullscreenElement?.id === "resultsQrStage"')
+        assert decode(Image.open(BytesIO(results_qr.screenshot()))) == dashboard_url
+        page.locator('#project_results').click()
+        page.wait_for_function('document.fullscreenElement === null')
+
         STAGE = 'logout and isolation'
         page.locator('#teacher_logout').click()
         page.locator('#teacher_login-user_id').wait_for()

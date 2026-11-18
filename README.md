@@ -11,13 +11,11 @@ Teachers and students need only a browser.
 ## Researcher workflow
 
 1. Sign in with the private teacher account.
-2. Open **Project** for the protocol or **Teach** for slides and presenter notes.
-3. Open **Survey QR**, choose **Generate QR** and **Project QR** for the class.
-   The QR and the code printed below it share one survey invitation. You can also
-   download the image or copy the link; keep the same code for everyone in that class.
-4. Open **Latest group** to inspect the most recent snapshot.
-5. In **Update**, choose **Update and publish** after the shared three-minute cooldown.
-6. Review acquisition/publication status and the private **Diagnostics**.
+2. Read **Project** for the roles, allocation choices and teaching sequence.
+3. Open **Survey QR** and project a single survey invitation for the class.
+4. When the class finishes, use **Update and publish** in **Update** and wait for confirmation.
+5. Open **Teach** and project the slides with the published group.
+6. Open **Results QR** to project or share the student dashboard link.
 
 See [class survey QR](docs/survey-qr.md) for projection and download instructions.
 

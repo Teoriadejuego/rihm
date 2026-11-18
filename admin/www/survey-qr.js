@@ -1,5 +1,15 @@
 import { createSurveyInvite, qrSvgMarkup, QR_BORDER } from './survey-qr-core.js';
 
+import { qrcodegen } from './qrcodegen-v1.8.0.js';
+
+customElements.define('dashboard-qr', class extends HTMLElement {
+  connectedCallback() {
+    const qr = qrcodegen.QrCode.encodeText(this.dataset.url, qrcodegen.QrCode.Ecc.QUARTILE);
+    this.innerHTML = qrSvgMarkup(qr);
+    this.firstElementChild.setAttribute('aria-label', 'QR code for the student results dashboard');
+  }
+});
+
 let current = null;
 let currentStage = null;
 const element = (id) => document.getElementById(id);
@@ -104,6 +114,14 @@ document.addEventListener('click', (event) => {
     // the invitation or class code to the Shiny server.
     window.Shiny?.setInputValue('survey_qr_activity', Date.now(), { priority: 'event' });
   }
+  if (target.id === 'project_results') {
+    const stage = element('resultsQrStage');
+    const toggle = document.fullscreenElement === stage
+      ? () => document.exitFullscreen() : () => stage.requestFullscreen();
+    Promise.resolve().then(toggle).catch(() => {
+      element('results_qr_status').textContent = 'Project this page or share the link below the QR.';
+    });
+  }
   if (target.id === 'generate_survey_qr') generate();
   if (target.id === 'present_survey_qr') void present();
   if (target.id === 'copy_survey_link') void copyLink();
@@ -121,3 +139,9 @@ if (window.jQuery) {
     if (event.target?.id === 'teacher_login-user_id') { current = null; currentStage = null; }
   });
 }
+
+document.addEventListener('fullscreenchange', () => {
+  const button = element('project_results');
+  if (button) button.textContent = document.fullscreenElement === element('resultsQrStage')
+    ? 'Exit full screen' : 'Project results QR';
+});

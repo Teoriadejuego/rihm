@@ -97,3 +97,9 @@ body { background:var(--lab-wash); color:var(--lab-ink); font-family:"Segoe UI",
 .survey-qr-stage:fullscreen #exit_survey_qr { display:block; margin-top:8px; }
 @media(max-width:760px) { .research-header { flex-wrap:wrap; gap:12px; } .research-header>.shiny-html-output { margin-left:0; } .research-split,.slide-columns { grid-template-columns:1fr; gap:12px; } .research-workbench .nav-tabs { gap:0; } .research-workbench .nav-tabs .nav-link { padding:12px; } .presentation-stage { min-height:500px; } .teacher-bar { grid-template-columns:90px minmax(40px,1fr) 67px; gap:8px; } .presentation-stage .teacher-bar { grid-template-columns:100px minmax(40px,1fr) 70px; font-size:1rem; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation:none!important; transition:none!important; } }
+
+#resultsQrStage { gap:12px; }
+#resultsQrStage dashboard-qr { display:block; }
+#resultsQrStage a { overflow-wrap:anywhere; max-width:100%; }
+#resultsQrStage h3 { margin:0; }
+#results_qr_status:empty { display:none; }

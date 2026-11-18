@@ -216,6 +216,16 @@ server <- function(input, output, session) {
     send_controls(teacher_control_state(state, cooldown(), owner, configured = !is.null(config_result$value)))
   })
 
+  output$results_invitation <- renderUI({
+    req(authenticated(), config_result$value)
+    url <- config_result$value$publication$pages_base_url
+    div(id = "resultsQrStage", class = "survey-qr-stage", tabindex = "-1",
+      h3("Scan to explore the results"),
+      htmltools::tag("dashboard-qr", list(class = "survey-qr-image", `data-url` = url)),
+      tags$a(href = url, target = "_blank", rel = "noopener", url),
+      tags$button(type = "button", id = "project_results", class = "btn btn-outline-primary", "Project results QR"),
+      tags$span(id = "results_qr_status", role = "status"))
+  })
   output$student_link <- renderUI({
     req(authenticated(), config_result$value)
     tags$a(class = "btn btn-outline-primary", href = config_result$value$publication$pages_base_url,
