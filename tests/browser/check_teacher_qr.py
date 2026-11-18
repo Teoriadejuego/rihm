@@ -48,7 +48,7 @@ def main():
             page.wait_for_timeout(500)
             page.locator('#teacher_login-go_auth').click()
             page.locator('a[data-value="Survey QR"]').wait_for(timeout=30000)
-            page.locator('a[data-value="Survey QR"]').click()
+            page.locator('#go_survey').click()
             expect(page.locator('#survey_qr_empty')).to_be_visible()
             expect(page.locator('#survey_qr_ready')).to_be_hidden()
 
@@ -69,6 +69,11 @@ def main():
         assert decode(Image.open(BytesIO(qr.screenshot()))) == url
         assert page.locator('#survey_qr_code').bounding_box()['y'] > qr.bounding_box()['y'] + qr.bounding_box()['height']
         page.screenshot(path=str(ROOT / 'staging' / f'teacher-qr-{LABEL}.png'), full_page=True)
+
+        fallback = page.locator('.survey-fallback')
+        fallback.locator('summary').click()
+        expect(page.locator('#survey_qr_link')).to_be_visible()
+        fallback.locator('summary').click()
 
         STAGE = 'clipboard and downloadable image'
         page.locator('#copy_survey_link').click()

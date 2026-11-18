@@ -103,3 +103,9 @@ body { background:var(--lab-wash); color:var(--lab-ink); font-family:"Segoe UI",
 #resultsQrStage a { overflow-wrap:anywhere; max-width:100%; }
 #resultsQrStage h3 { margin:0; }
 #results_qr_status:empty { display:none; }
+
+.survey-fallback { max-width:62ch; overflow-wrap:anywhere; }
+.research-workbench .survey-fallback { margin:0; border:0; padding:0; }
+.survey-fallback summary { margin:0; }
+.survey-fallback p { margin:6px auto; }
+.research-sequence .action-button { font-weight:700; }

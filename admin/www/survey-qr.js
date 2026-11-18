@@ -59,6 +59,9 @@ async function copyLink() {
     await navigator.clipboard.writeText(invite.url);
     announce('Survey link copied. It includes this group’s code.');
   } catch {
+    const link = element('survey_qr_link');
+    link.closest('details').open = true;
+    link.focus();
     announce('Copy the survey link shown below the QR. It includes this group’s code.');
   }
 }

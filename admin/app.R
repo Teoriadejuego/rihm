@@ -216,6 +216,15 @@ server <- function(input, output, session) {
     send_controls(teacher_control_state(state, cooldown(), owner, configured = !is.null(config_result$value)))
   })
 
+  select_step <- function(step) {
+    req(authenticated())
+    bslib::nav_select("teacher_tabs", selected = step, session = session)
+  }
+  observeEvent(input$go_survey, select_step("Survey QR"))
+  observeEvent(input$go_update, select_step("Update"))
+  observeEvent(input$go_teach, select_step("Teach"))
+  observeEvent(input$go_results, select_step("Results QR"))
+
   output$results_invitation <- renderUI({
     req(authenticated(), config_result$value)
     url <- config_result$value$publication$pages_base_url

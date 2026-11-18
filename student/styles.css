@@ -16,3 +16,9 @@
 h1{max-width:14ch}
 @media(max-width:720px){h1{max-width:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{.site-header nav,.refresh-button,.intro-link{display:none}body{background:white}details{break-inside:avoid}.data-grid{grid-template-columns:1fr 1fr}}
+
+.discussion-prompts details { border-top:1px solid currentColor; padding:.8rem 0; }
+.discussion-prompts summary { font-weight:650; cursor:pointer; }
+.discussion-prompts details p { margin:.6rem 0 .1rem; }
+.discussion-prompts > a { display:inline-block; margin-top:.9rem; }
+.site-header nav { flex-wrap:wrap; }
