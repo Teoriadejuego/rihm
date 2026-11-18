@@ -54,8 +54,10 @@ while `npm run test:e2e:built` tests an existing build.
 
 R setup temporarily disables APT's optional recommendations while retaining the
 requested tools and their required dependencies. The normal APT policy is restored
-before installing application dependencies. This targets the 172-package tool setup
-observed in the first deployment attempt; all R and browser checks still run.
+before installing application dependencies. On the Ubuntu 24.04 runners,
+the observed tool setup decreased from 172 to 47 new packages, from 30.9 to 22.0 MB
+of downloads and from 105 to 70 MB of additional disk space. All R and browser checks
+still run; mirror speed can still dominate the setup time.
 
 No framework or dependency was added. Existing development-tool `picomatch` audit
 findings remain documented in implementation-status.md; production JavaScript has no
@@ -73,3 +75,23 @@ The authenticated researcher browser check passed read recovery, fullscreen entr
 server-controlled exit, cooldown enforcement/re-enabling, logout and a second login
 with correctly enabled controls. The coordinator regression renders a snapshot once
 across five clock ticks, and once more only when the snapshot actually changes.
+
+The hosted researcher panel was deployed as shinyapps.io bundle `12836468` and
+verified at https://teoria-juegos.shinyapps.io/rihm-profesor/. Two authenticated
+sessions restored the published snapshot and passed controls, slides, fullscreen
+and logout checks without JavaScript errors. Private credential fields remain hidden.
+Hosting retains one initial instance and at most one Shiny process per instance,
+as required by the in-process coordinator.
+
+GitHub Actions [run 44207729618](https://github.com/Teoriadejuego/rihm/actions/runs/44207729618)
+passed the R suite, JavaScript tests, browser checks and artifact privacy scan, then
+deployed source commit `07388e2`. The live student site was checked on desktop
+(1440 px) and mobile (390 px): local filtering and comparisons worked without
+additional requests, private-service calls, horizontal page overflow or JavaScript
+errors. Its JavaScript and CSS match the locally reviewed build byte-for-byte, and
+both public JSON files match the unchanged reviewed source.
+
+The five-refresh measurement was repeated at https://teoriadejuego.github.io/rihm/:
+zero complete view replacements, zero removed elements, preserved matrix/filter
+nodes, five manifest requests and zero result downloads. The public manifest and
+results passed exact SHA-256 verification.
